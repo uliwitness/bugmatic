@@ -186,78 +186,149 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 }
 
 
+void	print_syntax()
+{
+	cerr << "Syntax: bugmatic <operation> ..." << endl
+			<< "\tbugmatic init" << endl
+			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
+			<< "\tbugmatic new" << endl;
+}
+
+
 int main( int argc, const char * argv[] )
 {
-	if( argc < 4 || argc > 5 )
-	{
-		cerr << "Syntax: " << argv[0] << " <operation> ..." << endl
-			<< "\tclone <username> <project> [<projectUsername>]";
-		return 1;
-	}
-	
-	string	operation = argv[1];
-	string	userName = argv[2];
-	string	project = argv[3];
-	string	projectUserName = userName;
-	if( argc > 4 )
-		projectUserName = argv[4];
-
-	string	password;
-	if( operation == "clone" )
-	{
-		char passBuf[1024] = {};
-
-		printf( "Password for %s: ", userName.c_str() );
-		scanf( "%s", passBuf );
-		if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
-			scanf( "%s", passBuf );
-
-		password = passBuf;
-	}
-	
 	try
 	{
-		mkdir("issues",0777);
-		mkdir("milestones",0777);
-		mkdir("users",0777);
-		mkdir("cache",0777);
-		
-		// TODO: Should report rate limit exceeded like documented on https://developer.github.com/v3/#rate-limiting
-		
-		stringstream	issuesUrl;
-		issuesUrl << "https://api.github.com/repos/" << projectUserName << "/" << project << "/issues?state=all&sort=created&direction=asc";
-		paged_cached_download( issuesUrl.str(), "cache/issues.json", userName, password,
-			[userName,password]( string replyData )
+		if( argc < 2 )
+		{
+			print_syntax();
+			return 1;
+		}
+		string	operation = argv[1];
+
+		if( operation == "init" )
+		{
+			mkdir("issues",0777);
+			mkdir("milestones",0777);
+			mkdir("users",0777);
+			mkdir("cache",0777);
+			
+			ofstream	settingsfile("cache/bugmatic_state");
+			settingsfile << "next_bug_number: " << 1 << endl;
+	
+			cout << "Done." << endl;
+		}
+		else if( operation == "new" )
+		{
+			ifstream	settingsfile("cache/bugmatic_state");
+			string		settings = file_contents( settingsfile );
+			off_t		searchPos = 0;
+			size_t		strLen = settings.length();
+			int			bugNumber = 1;
+			stringstream	newsettings;
+			while( true )
 			{
-				string	errMsg;
-				Json	replyJson = Json::parse( replyData, errMsg );
-				if( errMsg.length() == 0 )
+				off_t pos = settings.find('\n', searchPos);
+				if( pos == string::npos )
+					pos = strLen;
+				string currline = settings.substr( searchPos, pos -searchPos );
+				std::pair<string,string>	setting = url_reply::header_name_and_value( currline );
+				
+				if( setting.first == "next_bug_number" )
 				{
-					for( const Json& currItem : replyJson.array_items() )
-					{
-						int	bugNumber = currItem["number"].int_value();
-						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-						for( const Json& currLabel : currItem["labels"].array_items() )
-						{
-							cout << " [" << currLabel["name"].string_value() << "]";
-						}
-						cout << endl;
-						
-						if( currItem["comments"].int_value() > 0 )
-						{
-							download_comments( bugNumber, currItem["comments_url"].string_value(), userName, password );
-						}
-						stringstream	issuefilename;
-						issuefilename << "issues/" << bugNumber << ".json";
-						ofstream		issuefile( issuefilename.str() );
-						issuefile << currItem.dump();
-					}
+					bugNumber = atoi( setting.second.c_str() );
+					newsettings << "next_bug_number: " << (bugNumber +1) << endl;
 				}
 				else
 				{
-					cerr << errMsg << endl;
+					newsettings << currline << endl;
 				}
-			} );
+				
+				if( pos >= strLen )
+					break;
+				searchPos = pos +1;
+			}
+			
+			Json			currItem = Json( (map<string,string>){ { "title", "new bug" }, { "number", to_string(bugNumber) } } );
+			stringstream	issuefilename;
+			issuefilename << "issues/" << bugNumber << ".pending.json";
+			ofstream		issuefile( issuefilename.str() );
+			issuefile << currItem.dump();
+			
+			ofstream		oissuefile( "cache/bugmatic_state" );
+			oissuefile << newsettings.str();
+			
+			cout << "Created Issue " << issuefilename.str() << "." << endl;
+		}
+		else if( operation == "clone" )
+		{
+			if( argc < 4 || argc > 5 )
+			{
+				print_syntax();
+				return 1;
+			}
+			string	userName = argv[2];
+			string	project = argv[3];
+			string	projectUserName = userName;
+			if( argc > 4 )
+				projectUserName = argv[4];
+
+			string	password;
+			char passBuf[1024] = {};
+
+			printf( "Password for %s: ", userName.c_str() );
+			scanf( "%s", passBuf );
+			if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
+				scanf( "%s", passBuf );
+
+			password = passBuf;
+		
+			mkdir("issues",0777);
+			mkdir("milestones",0777);
+			mkdir("users",0777);
+			mkdir("cache",0777);
+			
+			// TODO: Should report rate limit exceeded like documented on https://developer.github.com/v3/#rate-limiting
+			
+			stringstream	issuesUrl;
+			issuesUrl << "https://api.github.com/repos/" << projectUserName << "/" << project << "/issues?state=all&sort=created&direction=asc";
+			paged_cached_download( issuesUrl.str(), "cache/issues.json", userName, password,
+				[userName,password]( string replyData )
+				{
+					string	errMsg;
+					Json	replyJson = Json::parse( replyData, errMsg );
+					if( errMsg.length() == 0 )
+					{
+						for( const Json& currItem : replyJson.array_items() )
+						{
+							int	bugNumber = currItem["number"].int_value();
+							cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+							for( const Json& currLabel : currItem["labels"].array_items() )
+							{
+								cout << " [" << currLabel["name"].string_value() << "]";
+							}
+							cout << endl;
+							
+							if( currItem["comments"].int_value() > 0 )
+							{
+								download_comments( bugNumber, currItem["comments_url"].string_value(), userName, password );
+							}
+							stringstream	issuefilename;
+							issuefilename << "issues/" << bugNumber << ".json";
+							ofstream		issuefile( issuefilename.str() );
+							issuefile << currItem.dump();
+						}
+					}
+					else
+					{
+						cerr << errMsg << endl;
+					}
+				} );
+	
+			cout << "Done." << endl;
+		}
+		else
+			print_syntax();
 	}
 	catch( const std::exception& err )
 	{
@@ -267,8 +338,6 @@ int main( int argc, const char * argv[] )
 	{
 		cerr << "Unknown exception" << endl;
 	}
-	
-	cout << "Done." << endl;
 	
 	return 0;
 }

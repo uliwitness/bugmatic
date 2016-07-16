@@ -156,10 +156,9 @@ std::pair<std::string,std::string>	url_reply::header_name_and_value( std::string
 	if( pos != std::string::npos )
 	{
 		theResult.first = inHeaderLine.substr(0,pos);
-		off_t	endPos = inHeaderLine.find_last_not_of( '\n' );
-		off_t	endPos2 = inHeaderLine.find_last_not_of( '\r' );
-		if( endPos > endPos2 )
-			endPos = endPos2;
+		off_t	endPos = inHeaderLine.length();
+		while( inHeaderLine[endPos-1] == '\n' )
+			endPos--;
 		theResult.second = inHeaderLine.substr(pos +1, endPos -(pos +1));
 	}
 	else
