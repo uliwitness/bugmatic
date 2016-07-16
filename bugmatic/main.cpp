@@ -255,8 +255,8 @@ int main( int argc, const char * argv[] )
 			ofstream		issuefile( issuefilename.str() );
 			issuefile << currItem.dump();
 			
-			ofstream		oissuefile( "cache/bugmatic_state" );
-			oissuefile << newsettings.str();
+			ofstream		statefile( "cache/bugmatic_state" );
+			statefile << newsettings.str();
 			
 			cout << "Created Issue " << issuefilename.str() << "." << endl;
 		}
@@ -290,10 +290,11 @@ int main( int argc, const char * argv[] )
 			
 			// TODO: Should report rate limit exceeded like documented on https://developer.github.com/v3/#rate-limiting
 			
+			int				nextBugNumber = 1;
 			stringstream	issuesUrl;
 			issuesUrl << "https://api.github.com/repos/" << projectUserName << "/" << project << "/issues?state=all&sort=created&direction=asc";
 			paged_cached_download( issuesUrl.str(), "cache/issues.json", userName, password,
-				[userName,password]( string replyData )
+				[userName,password,&nextBugNumber]( string replyData )
 				{
 					string	errMsg;
 					Json	replyJson = Json::parse( replyData, errMsg );
@@ -317,6 +318,9 @@ int main( int argc, const char * argv[] )
 							issuefilename << "issues/" << bugNumber << ".json";
 							ofstream		issuefile( issuefilename.str() );
 							issuefile << currItem.dump();
+							
+							if( bugNumber >= nextBugNumber )
+								nextBugNumber = bugNumber +1;
 						}
 					}
 					else
@@ -325,6 +329,41 @@ int main( int argc, const char * argv[] )
 					}
 				} );
 	
+			// Write out highest bug number so we don't need to search the database to add a bug:
+			ifstream	settingsfile("cache/bugmatic_state");
+			string		settings = file_contents( settingsfile );
+			off_t		searchPos = 0;
+			size_t		strLen = settings.length();
+			stringstream	newsettings;
+			while( true )
+			{
+				off_t pos = settings.find('\n', searchPos);
+				if( pos == string::npos )
+					pos = strLen;
+				string currline = settings.substr( searchPos, pos -searchPos );
+				string	setting = url_reply::header_name( currline );
+				
+				if( setting == "next_bug_number" )
+				{
+					newsettings << "next_bug_number: " << nextBugNumber << endl;
+					nextBugNumber = 0;
+				}
+				else
+					newsettings << currline << endl;
+				
+				if( pos >= strLen )
+					break;
+				searchPos = pos +1;
+			}
+			
+			if( nextBugNumber != 0 )
+			{
+				newsettings << "next_bug_number: " << nextBugNumber << endl;
+			}
+			
+			ofstream		statefile( "cache/bugmatic_state" );
+			statefile << newsettings.str();
+			
 			cout << "Done." << endl;
 		}
 		else
