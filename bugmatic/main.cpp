@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <stdio.h>
 
 
 using Json = json11::Json;
@@ -189,16 +190,30 @@ int main( int argc, const char * argv[] )
 {
 	if( argc < 4 || argc > 5 )
 	{
-		cerr << "Syntax: " << argv[0] << " <username> <password> <project> [<projectUsername>]";
+		cerr << "Syntax: " << argv[0] << " <operation> ..." << endl
+			<< "\tclone <username> <project> [<projectUsername>]";
 		return 1;
 	}
 	
-	string	userName = argv[1];
-	string	password = argv[2];
+	string	operation = argv[1];
+	string	userName = argv[2];
 	string	project = argv[3];
 	string	projectUserName = userName;
 	if( argc > 4 )
 		projectUserName = argv[4];
+
+	string	password;
+	if( operation == "clone" )
+	{
+		char passBuf[1024] = {};
+
+		printf( "Password for %s: ", userName.c_str() );
+		scanf( "%s", passBuf );
+		if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
+			scanf( "%s", passBuf );
+
+		password = passBuf;
+	}
 	
 	try
 	{
