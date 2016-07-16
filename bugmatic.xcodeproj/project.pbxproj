@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		554408B11D2A9336001EA2BC /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B01D2A9336001EA2BC /* main.cpp */; };
+		554408B91D2AB1E3001EA2BC /* url_request.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B71D2AB1E3001EA2BC /* url_request.cpp */; };
+		55614A781D3A431C0026B9A8 /* json11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55614A761D3A431C0026B9A8 /* json11.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +27,10 @@
 /* Begin PBXFileReference section */
 		554408AD1D2A9336001EA2BC /* bugmatic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = bugmatic; sourceTree = BUILT_PRODUCTS_DIR; };
 		554408B01D2A9336001EA2BC /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		554408B71D2AB1E3001EA2BC /* url_request.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = url_request.cpp; sourceTree = "<group>"; };
+		554408B81D2AB1E3001EA2BC /* url_request.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = url_request.hpp; sourceTree = "<group>"; };
+		55614A761D3A431C0026B9A8 /* json11.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = json11.cpp; path = json11/json11.cpp; sourceTree = SOURCE_ROOT; };
+		55614A771D3A431C0026B9A8 /* json11.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = json11.hpp; path = json11/json11.hpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +64,10 @@
 			isa = PBXGroup;
 			children = (
 				554408B01D2A9336001EA2BC /* main.cpp */,
+				554408B81D2AB1E3001EA2BC /* url_request.hpp */,
+				554408B71D2AB1E3001EA2BC /* url_request.cpp */,
+				55614A771D3A431C0026B9A8 /* json11.hpp */,
+				55614A761D3A431C0026B9A8 /* json11.cpp */,
 			);
 			path = bugmatic;
 			sourceTree = "<group>";
@@ -118,7 +128,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55614A781D3A431C0026B9A8 /* json11.cpp in Sources */,
 				554408B11D2A9336001EA2BC /* main.cpp in Sources */,
+				554408B91D2AB1E3001EA2BC /* url_request.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +221,7 @@
 		554408B51D2A9336001EA2BC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OTHER_LDFLAGS = "-lcurl";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -216,6 +229,7 @@
 		554408B61D2A9336001EA2BC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OTHER_LDFLAGS = "-lcurl";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -239,6 +253,7 @@
 				554408B61D2A9336001EA2BC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
