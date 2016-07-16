@@ -28,6 +28,14 @@ CURLcode url_request::load( std::string url, url_reply& outReply )
     // set the URL we want
     curl_easy_setopt( mCURLHandle, CURLOPT_URL, url.c_str() );
 
+	// Set user name and password if given:
+	if( mUserName.length() > 0 && mPassword.length() > 0 )
+	{
+		curl_easy_setopt( mCURLHandle, CURLOPT_HTTPAUTH, CURLAUTH_NEGOTIATE );
+		curl_easy_setopt( mCURLHandle, CURLOPT_USERNAME, mUserName.c_str() );
+		curl_easy_setopt( mCURLHandle, CURLOPT_PASSWORD, mPassword.c_str() );
+	}
+	
     struct curl_slist *chunk = NULL;
 
 	for( const std::string& currStr : mHeadersToSend )

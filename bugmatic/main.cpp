@@ -37,7 +37,7 @@ string	file_contents( ifstream& stream )
 }
 
 
-void	paged_cached_download( string url, string fname, std::function<void(string)> fileContentsCallback )
+void	paged_cached_download( string url, string fname, string userName, string password, std::function<void(string)> fileContentsCallback )
 {
 	ifstream	downloadedjson;
 	downloadedjson.open(fname);
@@ -75,13 +75,13 @@ void	paged_cached_download( string url, string fname, std::function<void(string)
 			url_reply	reply;
 			
 			request.add_header( "User-Agent: bugmatic/0.1" );
+			request.set_user_name( userName );
+			request.set_password( password );
 		
 			cout << "\tFetching URL: " << url << endl;
 			CURLcode	errcode = request.load( url, reply );
 			if( errcode == CURLE_OK )
 			{
-				fileContentsCallback( reply.data() );
-				
 				stringstream	currFilename;
 				if( x == 1 )
 					currFilename << fname;
@@ -93,7 +93,9 @@ void	paged_cached_download( string url, string fname, std::function<void(string)
 				ofstream	jsonfile(currFilename.str());
 				jsonfile << reply.data();
 				
-				if( url != lastPage )
+				fileContentsCallback( reply.data() );
+				
+				if( url == lastPage )
 					break;
 				nextPage = reply.link_header_rel( "next" );
 				lastPage = reply.link_header_rel( "last" );
@@ -113,7 +115,7 @@ void	paged_cached_download( string url, string fname, std::function<void(string)
 }
 
 
-string	cached_download( string url, string fname )
+string	cached_download( string url, string fname, string userName, string password )
 {
 	string		replyData;
 	ifstream	downloadedjson;
@@ -129,6 +131,8 @@ string	cached_download( string url, string fname )
 		url_reply	reply;
 		
 		request.add_header( "User-Agent: bugmatic/0.1" );
+		request.set_user_name( userName );
+		request.set_password( password );
 	
 		cout << "\tFetching URL: " << url << endl;
 		CURLcode	errcode = request.load( url, reply );
@@ -149,12 +153,12 @@ string	cached_download( string url, string fname )
 }
 
 
-void	download_comments( int bugNumber, string commentsURL )
+void	download_comments( int bugNumber, string commentsURL, string userName, string password )
 {
 	ifstream		downloadedcommentsjson;
 	stringstream	downloadedcommentsfilename;
 	downloadedcommentsfilename << "cache/" << bugNumber << "_comments_downloaded.json";
-	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str() );
+	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password );
 	
 	stringstream	issuecommentfoldername;
 	issuecommentfoldername << "issues/" << bugNumber << "_comments";
@@ -183,6 +187,19 @@ void	download_comments( int bugNumber, string commentsURL )
 
 int main( int argc, const char * argv[] )
 {
+	if( argc < 4 || argc > 5 )
+	{
+		cerr << "Syntax: " << argv[0] << " <username> <password> <project> [<projectUsername>]";
+		return 1;
+	}
+	
+	string	userName = argv[1];
+	string	password = argv[2];
+	string	project = argv[3];
+	string	projectUserName = userName;
+	if( argc > 4 )
+		projectUserName = argv[4];
+	
 	try
 	{
 		mkdir("issues",0777);
@@ -190,8 +207,12 @@ int main( int argc, const char * argv[] )
 		mkdir("users",0777);
 		mkdir("cache",0777);
 		
-		paged_cached_download( "https://api.github.com/repos/uliwitness/Stacksmith/issues?state=all&sort=created&direction=asc", "cache/issues.json",
-			[]( string replyData )
+		// TODO: Should report rate limit exceeded like documented on https://developer.github.com/v3/#rate-limiting
+		
+		stringstream	issuesUrl;
+		issuesUrl << "https://api.github.com/repos/" << projectUserName << "/" << project << "/issues?state=all&sort=created&direction=asc";
+		paged_cached_download( issuesUrl.str(), "cache/issues.json", userName, password,
+			[userName,password]( string replyData )
 			{
 				string	errMsg;
 				Json	replyJson = Json::parse( replyData, errMsg );
@@ -209,7 +230,7 @@ int main( int argc, const char * argv[] )
 						
 						if( currItem["comments"].int_value() > 0 )
 						{
-							download_comments( bugNumber, currItem["comments_url"].string_value() );
+							download_comments( bugNumber, currItem["comments_url"].string_value(), userName, password );
 						}
 						stringstream	issuefilename;
 						issuefilename << "issues/" << bugNumber << ".json";
@@ -225,7 +246,7 @@ int main( int argc, const char * argv[] )
 	}
 	catch( const std::exception& err )
 	{
-		cerr << err.what() << endl;
+		cerr << "Error: " << err.what() << endl;
 	}
 	catch( ... )
 	{

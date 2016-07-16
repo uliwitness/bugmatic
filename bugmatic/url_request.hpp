@@ -54,9 +54,13 @@ public:
 
 	inline void	add_header( std::string inHeader )							{ mHeadersToSend.push_back(inHeader); }
 	inline void	add_post_field( std::string inName, std::string inValue )	{ mPostData[inName] = inValue; }
+	inline void	set_user_name( std::string n )								{ mUserName = n; }
+	inline void	set_password( std::string n )								{ mPassword = n; }
 
 protected:
     CURL*								mCURLHandle;
+	std::string							mUserName;
+	std::string							mPassword;
 	std::vector<std::string>			mHeadersToSend;
 	std::map<std::string,std::string>	mPostData;
 };
