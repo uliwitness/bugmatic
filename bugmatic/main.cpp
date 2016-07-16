@@ -49,21 +49,39 @@ string	cached_download( string url, string fname )
 	}
 	else
 	{
-		url_request	request;
-		url_reply	reply;
+		string		nextPage, lastPage;
 		
-		request.add_header( "User-Agent: bugmatic/0.1" );
-	
-		CURLcode	errcode = request.load( url, reply );
-		if( errcode == CURLE_OK )
+		while( url != lastPage )
 		{
-			ofstream	jsonfile(fname);
-			replyData = reply.data();
-			jsonfile << replyData;
+			url_request	request;
+			url_reply	reply;
+			
+			request.add_header( "User-Agent: bugmatic/0.1" );
+		
+			cout << "\tFetching URL: " << url << endl;
+			CURLcode	errcode = request.load( url, reply );
+			if( errcode == CURLE_OK )
+			{
+				replyData.append( reply.data() );
+				
+//				nextPage = reply.link_header_rel( "next" );
+//				lastPage = reply.link_header_rel( "last" );
+				if( lastPage.empty() )
+					break;
+				
+				url = nextPage;
+			}
+			else
+			{
+				cerr << "Curl Error " << errcode << " downloading from '" << url << "'" << endl;
+				return std::string();
+			}
 		}
-		else
-			cerr << "Curl Error: " << errcode << endl;
 	}
+	
+	ofstream	jsonfile(fname);
+	jsonfile << replyData;
+
 	return replyData;
 }
 
