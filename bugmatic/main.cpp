@@ -37,6 +37,82 @@ string	file_contents( ifstream& stream )
 }
 
 
+void	paged_cached_download( string url, string fname, std::function<void(string)> fileContentsCallback )
+{
+	ifstream	downloadedjson;
+	downloadedjson.open(fname);
+	if( downloadedjson.is_open() )
+	{
+		cout << "\tUsing cached data from '" << fname << "'." << endl;
+		string		replyData = file_contents( downloadedjson );
+		fileContentsCallback( replyData);
+		downloadedjson.close();
+		
+		size_t	x = 2;
+		while( true )
+		{
+			stringstream	currFilename;
+			off_t			dotOffs = fname.rfind('.');
+			currFilename << fname.substr(0,dotOffs) << x << fname.substr(dotOffs);
+			downloadedjson.open(currFilename.str());
+			if( !downloadedjson.is_open() )
+				break;
+			cout << "\tUsing cached data from '" << currFilename.str() << "'." << endl;
+			replyData = file_contents( downloadedjson );
+			fileContentsCallback( replyData );
+			
+			x++;
+		}
+	}
+	else
+	{
+		string		nextPage, lastPage;
+		size_t		x = 1;
+		
+		while( true )
+		{
+			url_request	request;
+			url_reply	reply;
+			
+			request.add_header( "User-Agent: bugmatic/0.1" );
+		
+			cout << "\tFetching URL: " << url << endl;
+			CURLcode	errcode = request.load( url, reply );
+			if( errcode == CURLE_OK )
+			{
+				fileContentsCallback( reply.data() );
+				
+				stringstream	currFilename;
+				if( x == 1 )
+					currFilename << fname;
+				else
+				{
+					off_t			dotOffs = fname.rfind('.');
+					currFilename << fname.substr(0,dotOffs) << x << fname.substr(dotOffs);
+				}
+				ofstream	jsonfile(currFilename.str());
+				jsonfile << reply.data();
+				
+				if( url != lastPage )
+					break;
+				nextPage = reply.link_header_rel( "next" );
+				lastPage = reply.link_header_rel( "last" );
+				if( lastPage.empty() || nextPage.empty() )
+					break;
+				
+				url = nextPage;
+				x++;
+			}
+			else
+			{
+				cerr << "Curl Error " << errcode << " downloading from '" << url << "'" << endl;
+				return;
+			}
+		}
+	}
+}
+
+
 string	cached_download( string url, string fname )
 {
 	string		replyData;
@@ -49,38 +125,25 @@ string	cached_download( string url, string fname )
 	}
 	else
 	{
-		string		nextPage, lastPage;
+		url_request	request;
+		url_reply	reply;
 		
-		while( url != lastPage )
+		request.add_header( "User-Agent: bugmatic/0.1" );
+	
+		cout << "\tFetching URL: " << url << endl;
+		CURLcode	errcode = request.load( url, reply );
+		if( errcode == CURLE_OK )
 		{
-			url_request	request;
-			url_reply	reply;
-			
-			request.add_header( "User-Agent: bugmatic/0.1" );
-		
-			cout << "\tFetching URL: " << url << endl;
-			CURLcode	errcode = request.load( url, reply );
-			if( errcode == CURLE_OK )
-			{
-				replyData.append( reply.data() );
-				
-//				nextPage = reply.link_header_rel( "next" );
-//				lastPage = reply.link_header_rel( "last" );
-				if( lastPage.empty() )
-					break;
-				
-				url = nextPage;
-			}
-			else
-			{
-				cerr << "Curl Error " << errcode << " downloading from '" << url << "'" << endl;
-				return std::string();
-			}
+			replyData = reply.data();
+			ofstream	jsonfile(fname);
+			jsonfile << replyData;
+		}
+		else
+		{
+			cerr << "Curl Error " << errcode << " downloading from '" << url << "'" << endl;
+			return std::string();
 		}
 	}
-	
-	ofstream	jsonfile(fname);
-	jsonfile << replyData;
 
 	return replyData;
 }
@@ -127,36 +190,38 @@ int main( int argc, const char * argv[] )
 		mkdir("users",0777);
 		mkdir("cache",0777);
 		
-		string	replyData = cached_download( "https://api.github.com/repos/uliwitness/Stacksmith/issues?state=all&sort=created&direction=asc", "cache/issues.json" );
-		
-		string	errMsg;
-		Json	replyJson = Json::parse( replyData, errMsg );
-		if( errMsg.length() == 0 )
-		{
-			for( const Json& currItem : replyJson.array_items() )
+		paged_cached_download( "https://api.github.com/repos/uliwitness/Stacksmith/issues?state=all&sort=created&direction=asc", "cache/issues.json",
+			[]( string replyData )
 			{
-				int	bugNumber = currItem["number"].int_value();
-				cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-				for( const Json& currLabel : currItem["labels"].array_items() )
+				string	errMsg;
+				Json	replyJson = Json::parse( replyData, errMsg );
+				if( errMsg.length() == 0 )
 				{
-					cout << " [" << currLabel["name"].string_value() << "]";
+					for( const Json& currItem : replyJson.array_items() )
+					{
+						int	bugNumber = currItem["number"].int_value();
+						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+						for( const Json& currLabel : currItem["labels"].array_items() )
+						{
+							cout << " [" << currLabel["name"].string_value() << "]";
+						}
+						cout << endl;
+						
+						if( currItem["comments"].int_value() > 0 )
+						{
+							download_comments( bugNumber, currItem["comments_url"].string_value() );
+						}
+						stringstream	issuefilename;
+						issuefilename << "issues/" << bugNumber << ".json";
+						ofstream		issuefile( issuefilename.str() );
+						issuefile << currItem.dump();
+					}
 				}
-				cout << endl;
-				
-				if( currItem["comments"].int_value() > 0 )
+				else
 				{
-					download_comments( bugNumber, currItem["comments_url"].string_value() );
+					cerr << errMsg << endl;
 				}
-				stringstream	issuefilename;
-				issuefilename << "issues/" << bugNumber << ".json";
-				ofstream		issuefile( issuefilename.str() );
-				issuefile << currItem.dump();
-			}
-		}
-		else
-		{
-			cerr << errMsg << endl;
-		}
+			} );
 	}
 	catch( const std::exception& err )
 	{
