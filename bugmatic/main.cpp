@@ -43,23 +43,23 @@ void	paged_cached_download( string url, string fname, string userName, string pa
 	downloadedjson.open(fname);
 	if( downloadedjson.is_open() )
 	{
-		cout << "\tUsing cached data from '" << fname << "'." << endl;
-		string		replyData = file_contents( downloadedjson );
-		fileContentsCallback( replyData);
-		downloadedjson.close();
-		
-		size_t	x = 2;
+		size_t	x = 1;
 		while( true )
 		{
+			ifstream		currDownloadedjson;
 			stringstream	currFilename;
-			off_t			dotOffs = fname.rfind('.');
-			currFilename << fname.substr(0,dotOffs) << x << fname.substr(dotOffs);
-			downloadedjson.open(currFilename.str());
-			if( !downloadedjson.is_open() )
+			if( x == 1 )
+				currFilename << fname;
+			else
+			{
+				off_t			dotOffs = fname.rfind('.');
+				currFilename << fname.substr(0,dotOffs) << x << fname.substr(dotOffs);
+			}
+			currDownloadedjson.open(currFilename.str());
+			if( !currDownloadedjson.is_open() )
 				break;
 			cout << "\tUsing cached data from '" << currFilename.str() << "'." << endl;
-			replyData = file_contents( downloadedjson );
-			fileContentsCallback( replyData );
+			fileContentsCallback( file_contents( currDownloadedjson ) );
 			
 			x++;
 		}
