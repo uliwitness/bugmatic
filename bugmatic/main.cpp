@@ -191,7 +191,7 @@ void	print_syntax()
 	cerr << "Syntax: bugmatic <operation> ..." << endl
 			<< "\tbugmatic init" << endl
 			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
-			<< "\tbugmatic new" << endl;
+			<< "\tbugmatic new [<title> [<body>]]" << endl;
 }
 
 
@@ -220,6 +220,13 @@ int main( int argc, const char * argv[] )
 		}
 		else if( operation == "new" )
 		{
+			string		title = "New Bug";
+			string		body = "Description:\nsummary.\n\nSteps to Reproduce:\n1. step\n\nExpected Result:\nexpected.\n\nActual Result:\nresult\n";
+			if( argc >= 3 )
+				title = argv[2];
+			if( argc >= 4 )
+				body = argv[3];
+			
 			ifstream	settingsfile("cache/bugmatic_state");
 			string		settings = file_contents( settingsfile );
 			off_t		searchPos = 0;
@@ -249,7 +256,7 @@ int main( int argc, const char * argv[] )
 				searchPos = pos +1;
 			}
 			
-			Json			currItem = Json( (map<string,string>){ { "title", "new bug" }, { "number", to_string(bugNumber) } } );
+			Json			currItem = Json( (map<string,string>){ { "body", body }, { "number", to_string(bugNumber) }, { "title", title } } );
 			stringstream	issuefilename;
 			issuefilename << "issues/" << bugNumber << ".pending.json";
 			ofstream		issuefile( issuefilename.str() );
