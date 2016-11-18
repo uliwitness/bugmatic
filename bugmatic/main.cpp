@@ -194,7 +194,8 @@ void	print_syntax()
 	cerr << "Syntax: bugmatic <operation> ..." << endl
 			<< "\tbugmatic init" << endl
 			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
-			<< "\tbugmatic new [<title> [<body>]]" << endl;
+			<< "\tbugmatic new [<title> [<body>]]" << endl
+			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl;
 }
 
 
@@ -269,6 +270,73 @@ int main( int argc, const char * argv[] )
 			statefile << newsettings.str();
 			
 			cout << "Created Issue " << issuefilename.str() << "." << endl;
+		}
+		else if( operation == "new-remote" )
+		{
+			string userName = (argc > 4) ? argv[2] : argv[4];
+			string url = "https://api.github.com/repos/";
+			url.append(argv[2]);
+			url.append("/");
+			url.append(argv[3]);
+			url.append("/issues");
+
+			string postBody =	"{\n"
+								"  \"title\": \"Found a bug\",\n"
+								"  \"body\": \"I'm having a problem with this.\",\n"
+//								"  \"assignee\": \"octocat\",\n"
+//								"  \"assignees\": [\n"
+//								"    {\n"
+//								"      \"login\": \"uliwitness\",\n"
+//								"      \"id\": 1,\n"
+//								"      \"avatar_url\": \"https://github.com/images/error/octocat_happy.gif\",\n"
+//								"      \"gravatar_id\": \"\",\n"
+//								"      \"url\": \"https://api.github.com/users/octocat\",\n"
+//								"      \"html_url\": \"https://github.com/octocat\",\n"
+//								"      \"followers_url\": \"https://api.github.com/users/octocat/followers\",\n"
+//								"      \"following_url\": \"https://api.github.com/users/octocat/following{/other_user}\",\n"
+//								"      \"gists_url\": \"https://api.github.com/users/octocat/gists{/gist_id}\",\n"
+//								"      \"starred_url\": \"https://api.github.com/users/octocat/starred{/owner}{/repo}\",\n"
+//								"      \"subscriptions_url\": \"https://api.github.com/users/octocat/subscriptions\",\n"
+//								"      \"organizations_url\": \"https://api.github.com/users/octocat/orgs\",\n"
+//								"      \"repos_url\": \"https://api.github.com/users/octocat/repos\",\n"
+//								"      \"events_url\": \"https://api.github.com/users/octocat/events{/privacy}\",\n"
+//								"      \"received_events_url\": \"https://api.github.com/users/octocat/received_events\",\n"
+//								"      \"type\": \"User\",\n"
+//								"      \"site_admin\": false\n"
+//								"    }\n"
+//								"  ],\n"
+//								"  \"milestone\": 1,\n"
+								"  \"labels\": [\n"
+								"    \"bug\"\n"
+								"  ]\n"
+								"}";
+			
+			string	password;
+			char passBuf[1024] = {};
+
+			printf( "Password for %s: ", userName.c_str() );
+			scanf( "%s", passBuf );
+			if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
+				scanf( "%s", passBuf );
+
+			password = passBuf;
+
+			url_request	request;
+			url_reply	reply;
+			
+			request.add_header( "User-Agent: " USER_AGENT );
+			request.add_header( "Content-Type: text/json" );
+			request.set_user_name( userName );
+			request.set_password( password );
+			request.set_post_body( postBody );
+			
+			printf( "Post body: %zu bytes.\n", postBody.length() );
+			cout << "\tFetching URL: " << url << endl;
+			CURLcode	errcode = request.load( url, reply );
+			if( errcode == CURLE_OK )
+			{
+				printf( "Status Code: %d\n", reply.status() );
+			}
 		}
 		else if( operation == "clone" )
 		{

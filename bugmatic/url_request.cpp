@@ -31,7 +31,7 @@ CURLcode url_request::load( std::string url, url_reply& outReply )
 	// Set user name and password if given:
 	if( mUserName.length() > 0 && mPassword.length() > 0 )
 	{
-		curl_easy_setopt( mCURLHandle, CURLOPT_HTTPAUTH, CURLAUTH_NEGOTIATE );
+		curl_easy_setopt( mCURLHandle, CURLOPT_HTTPAUTH, CURLAUTH_BASIC );
 		curl_easy_setopt( mCURLHandle, CURLOPT_USERNAME, mUserName.c_str() );
 		curl_easy_setopt( mCURLHandle, CURLOPT_PASSWORD, mPassword.c_str() );
 	}
@@ -45,7 +45,15 @@ CURLcode url_request::load( std::string url, url_reply& outReply )
 	if( res != CURLE_OK )
 		return res;
 
-	if( mPostData.size() > 0 )
+	if( mPostBody.size() > 0 )
+	{
+		curl_easy_setopt( mCURLHandle, CURLOPT_POST, 1L );
+		curl_easy_setopt( mCURLHandle, CURLOPT_READFUNCTION, url_request::read_body_data);
+		curl_easy_setopt( mCURLHandle, CURLOPT_READDATA, this );
+		curl_easy_setopt( mCURLHandle, CURLOPT_POSTFIELDSIZE, mPostBody.length() );
+		curl_easy_setopt( mCURLHandle, CURLOPT_VERBOSE, 1L);
+	}
+	else if( mPostData.size() > 0 )
 	{
 		std::string		postData;
 		bool			isFirst = true;
@@ -81,6 +89,24 @@ CURLcode url_request::load( std::string url, url_reply& outReply )
 	curl_easy_cleanup( mCURLHandle );
 	
     return curlErr;
+}
+
+
+size_t url_request::read_body_data( void *ptr, size_t size, size_t nmemb, void *userp )
+{
+	url_request* handle = (url_request*)userp;
+	size_t data_size = size * nmemb;
+	if( handle->mPostBody.length() == 0 )
+		return 0;
+	if( data_size > handle->mPostBody.length() )
+		data_size = handle->mPostBody.length();
+    if( handle != NULL )
+	{
+        memmove( ptr, handle->mPostBody.data(), data_size );
+		handle->mPostBody.erase( 0, data_size );
+		printf( "\tSent %zu bytes...\n", data_size );
+    }
+	return data_size;
 }
 
 

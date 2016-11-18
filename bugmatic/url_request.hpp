@@ -18,8 +18,6 @@
 class url_reply
 {
 public:
-	url_reply() : mReceivedHttpStatus(0)	{}
-
     inline std::string							data() const			{ return mReceivedContent; }
     inline std::string							content_type() const	{ return mReceivedContentType; }
     inline unsigned int							status() const			{ return mReceivedHttpStatus; }
@@ -36,10 +34,10 @@ protected:
     std::string					mReceivedContent;
     std::string					mReceivedContentType;
 	std::vector<std::string>    mReceivedHeaders;
-    unsigned int				mReceivedHttpStatus;
+    unsigned int				mReceivedHttpStatus = 0;
 
-    static size_t      append_content( void* ptr, size_t size, size_t nmemb, void* stream );
-    static size_t      append_header( void* ptr, size_t size, size_t nmemb, void* stream );
+    static size_t		append_content( void* ptr, size_t size, size_t nmemb, void* stream );
+    static size_t		append_header( void* ptr, size_t size, size_t nmemb, void* stream );
 
 	friend class url_request;
 };
@@ -48,21 +46,24 @@ protected:
 class url_request
 {
 public:
-    url_request() : mCURLHandle(nullptr) {}
-	
     CURLcode    load( std::string inURL, url_reply& outReply );
 
 	inline void	add_header( std::string inHeader )							{ mHeadersToSend.push_back(inHeader); }
 	inline void	add_post_field( std::string inName, std::string inValue )	{ mPostData[inName] = inValue; }
+	inline void set_post_body( std::string n )								{ mPostBody = n; }
 	inline void	set_user_name( std::string n )								{ mUserName = n; }
 	inline void	set_password( std::string n )								{ mPassword = n; }
 
 protected:
-    CURL*								mCURLHandle;
+	static size_t		read_body_data( void *ptr, size_t size, size_t nmemb, void *userp );
+
+protected:
+    CURL*								mCURLHandle = nullptr;
 	std::string							mUserName;
 	std::string							mPassword;
 	std::vector<std::string>			mHeadersToSend;
 	std::map<std::string,std::string>	mPostData;
+	std::string							mPostBody;
 };
 
 
