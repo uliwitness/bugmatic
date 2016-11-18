@@ -18,6 +18,9 @@
 #include <stdio.h>
 
 
+#define USER_AGENT		"bugmatic/0.1"
+
+
 using Json = json11::Json;
 using namespace std;
 
@@ -75,7 +78,7 @@ void	paged_cached_download( string url, string fname, string userName, string pa
 			url_request	request;
 			url_reply	reply;
 			
-			request.add_header( "User-Agent: bugmatic/0.1" );
+			request.add_header( "User-Agent: " USER_AGENT );
 			request.set_user_name( userName );
 			request.set_password( password );
 		
@@ -131,7 +134,7 @@ string	cached_download( string url, string fname, string userName, string passwo
 		url_request	request;
 		url_reply	reply;
 		
-		request.add_header( "User-Agent: bugmatic/0.1" );
+		request.add_header( "User-Agent: " USER_AGENT );
 		request.set_user_name( userName );
 		request.set_password( password );
 	
