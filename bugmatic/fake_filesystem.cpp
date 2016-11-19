@@ -13,27 +13,33 @@
 using namespace fake::filesystem;
 
 
-std::string	path::filename()
+std::ostream& fake::filesystem::operator << ( std::ostream& inOutputStream, const path& inPath )
 {
-	off_t searchStart = path::npos;
-	if( length() > 0 && (*this)[length()-1] == '/' )	// Ends in slash?
-		searchStart = length() -2;	// Ignore trailing slash.
-	off_t pos = rfind("/", searchStart);
-    if( pos != path::npos )
-        return substr(pos +1);
+	return inOutputStream << inPath.string();
+}
+
+
+path path::filename() const
+{
+	off_t searchStart = std::string::npos;
+	if( mPath.length() > 0 && mPath[mPath.length()-1] == '/' )	// Ends in slash?
+		searchStart = mPath.length() -2;	// Ignore trailing slash.
+	off_t pos = mPath.rfind("/", searchStart);
+    if( pos != std::string::npos )
+        return path(mPath.substr(pos +1));
 	return "";
 }
 
 
-path path::parent_path()
+path path::parent_path() const
 {
-	off_t searchStart = path::npos;
-	if( length() > 0 && (*this)[length()-1] == '/' )	// Ends in slash?
-		searchStart = length() -2;	// Ignore trailing slash.
-	off_t pos = rfind("/",searchStart);
-    if( pos != path::npos )
+	off_t searchStart = std::string::npos;
+	if( mPath.length() > 0 && mPath[mPath.length()-1] == '/' )	// Ends in slash?
+		searchStart = mPath.length() -2;	// Ignore trailing slash.
+	off_t pos = mPath.rfind("/",searchStart);
+    if( pos != std::string::npos )
 	{
-        return path(substr(0,pos));
+        return path(mPath.substr(0,pos));
 	}
 	return "";
 }
@@ -41,20 +47,20 @@ path path::parent_path()
 
 path& path::operator /= ( const path& inAppendee )
 {
-	if( length() > 0 && (*this)[length()-1] != '/' )
-		append("/");
-	append(inAppendee);
+	if( mPath.length() > 0 && mPath[mPath.length()-1] != '/' )
+		mPath.append("/");
+	mPath.append(inAppendee.mPath);
 	
 	return *this;
 }
 
 
-path path::operator / ( const path& inAppendee )
+path path::operator / ( const path& inAppendee ) const
 {
 	path	newPath(*this);
-	if( length() > 0 && (*this)[length()-1] != '/' )
-		newPath.append("/");
-	newPath.append(inAppendee);
+	if( mPath.length() > 0 && mPath[mPath.length()-1] != '/' )
+		newPath.mPath.append("/");
+	newPath.mPath.append(inAppendee.mPath);
 	
 	return newPath;
 }
@@ -63,7 +69,7 @@ path path::operator / ( const path& inAppendee )
 directory_iterator::directory_iterator( path inPath )
 {
 	mPath = inPath;
-    mDir = new dir(opendir( inPath.c_str() ));
+    mDir = new dir(opendir( inPath.string().c_str() ));
 	
 	// Fetch the first file entry:
 	++(*this);
@@ -123,12 +129,12 @@ directory_iterator directory_iterator::operator ++ ()
 }
 
 
-bool	directory_iterator::operator == ( const directory_iterator& inOther )
+bool	directory_iterator::operator == ( const directory_iterator& inOther ) const
 {
 	return inOther.mEntry.mPath == mEntry.mPath;
 }
 
-bool	directory_iterator::operator != ( const directory_iterator& inOther )
+bool	directory_iterator::operator != ( const directory_iterator& inOther ) const
 {
 	return inOther.mEntry.mPath != mEntry.mPath;
 }

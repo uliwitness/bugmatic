@@ -24,23 +24,31 @@ namespace fake
 
 namespace filesystem
 {
-	class path : public std::string
+	class path
 	{
 	public:
 		path() = default;
 		path( const path& ) = default;
 		path( path&& ) = default;
-		path( const char* inStr ) { assign(inStr); }
-		explicit path( const std::string inStr ) { assign(inStr); }
+		path( const char* inStr ) : mPath(inStr) {}
+		explicit path( const std::string inStr ) : mPath(inStr) {}
 		
 		path& operator = ( const path& ) = default;
+		bool operator == ( const path& inOther ) const { return mPath.compare( inOther.mPath ) == 0; }
+		bool operator != ( const path& inOther ) const { return mPath.compare( inOther.mPath ) != 0; }
 		
 		path& operator /= ( const path& );
-		path operator / ( const path& );
+		path operator / ( const path& ) const;
 		
-		std::string	filename();
-		path parent_path();
+		path filename() const;
+		path parent_path() const;
+		std::string	string() const { return mPath; }
+	
+	protected:
+		std::string	mPath;
 	};
+
+	std::ostream& operator << ( std::ostream& inOutputStream, const path& inPath );
 	
 	class directory_entry
 	{
@@ -51,16 +59,16 @@ namespace filesystem
 		explicit directory_entry( const path& inPath ) : mPath(inPath) {}
 
 		directory_entry& operator = ( const directory_entry& ) = default;
-		bool operator == ( const directory_entry& inOther )
+		bool operator == ( const directory_entry& inOther ) const
 		{
-			return mPath.compare( inOther.mPath ) == 0;
+			return mPath == inOther.mPath;
 		}
-		bool operator != ( const directory_entry& inOther )
+		bool operator != ( const directory_entry& inOther ) const
 		{
-			return mPath.compare( inOther.mPath ) != 0;
+			return mPath != inOther.mPath;
 		}
 		
-		path	path()	{ return mPath; }
+		path	path() const	{ return mPath; }
 		
 	protected:
 		fake::filesystem::path		mPath;
@@ -79,7 +87,7 @@ namespace filesystem
 			dir* acquire()	{ ++mRefCount; return this; }
 			void release()	{ if( --mRefCount == 0 ) delete this; }
 			
-			DIR* get_dir()	{ return mDir; }
+			DIR* get_dir() const { return mDir; }
 			
 		protected:
 			~dir() {}
@@ -100,8 +108,8 @@ namespace filesystem
 		
 		directory_iterator& operator =( const directory_iterator& inOriginal );
 
-		bool	operator == ( const directory_iterator& inOther );
-		bool	operator != ( const directory_iterator& inOther );
+		bool	operator == ( const directory_iterator& inOther ) const;
+		bool	operator != ( const directory_iterator& inOther ) const;
 		
 	protected:
 		directory_entry	mEntry;
