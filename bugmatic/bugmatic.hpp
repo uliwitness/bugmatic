@@ -68,6 +68,7 @@ public:
 	std::string	state() const				{ return mIssueMetadata["state"].string_value(); }
 
 	std::vector<label_info>	labels() const;
+	void					add_label( std::string inLabelName );
 	
 	std::vector<user_info>	assignees() const;
 	user_info				user() const	{ return user_info( mIssueMetadata["user"] ); }

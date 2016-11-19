@@ -211,6 +211,31 @@ std::vector<label_info>	issue_info::labels() const
 }
 
 
+void	issue_info::add_label( std::string inLabelName )
+{
+	Json::object	fields( mIssueMetadata.object_items() );
+	Json::object	newObject;
+	Json::array		labelList;
+	
+	for( auto currField : fields )
+	{
+		if( currField.first == "labels" )
+			labelList = currField.second.array_items();
+		else
+			newObject.insert( currField );
+	}
+	
+	Json	labelJson((map<string,string>){ {"name", inLabelName} });
+	labelList.push_back( labelJson );
+	newObject["labels"] = Json(labelList);
+
+	mIssueMetadata = Json( newObject );
+	
+	ofstream	outputFile( filepath() );
+	outputFile << mIssueMetadata.dump();
+}
+
+
 std::vector<user_info>	issue_info::assignees() const
 {
 	std::vector<user_info>	userInfos;

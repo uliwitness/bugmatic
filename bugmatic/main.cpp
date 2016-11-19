@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include <sstream>
 #include "bugmatic.hpp"
 #include <unistd.h>
 
@@ -87,26 +88,6 @@ int main( int argc, const char * argv[] )
 			
 			cout << "Created Issue " << issuefilename << "." << endl;
 		}
-		else if( operation == "new-remote" )
-		{
-			string userName = (argc > 4) ? argv[2] : argv[4];
-			
-			string	password;
-			char passBuf[1024] = {};
-
-			printf( "Password for %s: ", userName.c_str() );
-			scanf( "%s", passBuf );
-			if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
-				scanf( "%s", passBuf );
-
-			password = passBuf;
-
-			working_copy	wc( currDir );
-			remote			theRemote( argv[3], argv[2], (argc > 4) ? argv[2] : argv[4], password );
-			wc.new_issue_remote( theRemote, "New Test Bug", "New Test bug's body text." );
-
-			cout << "Done." << endl;
-		}
 		else if( operation == "clone" )
 		{
 			if( argc < 4 || argc > 5 )
@@ -162,6 +143,29 @@ int main( int argc, const char * argv[] )
 			working_copy	wc(currDir);
 			remote			theRemote( project, projectUserName, userName, password );
 			wc.push( theRemote );
+			
+			cout << "Done." << endl;
+		}
+		else if( operation == "label" )
+		{
+			if( argc < 3 )
+			{
+				print_syntax();
+				return 1;
+			}
+
+			string labelName = argv[2];
+			working_copy	wc( currDir );
+			int bugNumber = (argc >= 4) ? atoi(argv[3]) : wc.next_bug_number() -1;
+			
+			stringstream criterion;
+			criterion << "number=";
+			criterion << bugNumber;
+			
+			wc.list((std::vector<std::string>) {criterion.str()}, [labelName](issue_info currIssue)
+			{
+				currIssue.add_label( labelName );
+			});
 			
 			cout << "Done." << endl;
 		}
