@@ -434,7 +434,7 @@ void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<
 			
 			if( !skip )
 			{
-				resultsCallback(issue_info(currItem));
+				resultsCallback(issue_info(currItem,fpath.string()));
 			}
 		}
 		else
@@ -483,13 +483,13 @@ std::string	working_copy::new_issue( std::string inTitle, std::string inBody )
 	Json			currItem = Json( (map<string,string>){ { "body", inBody }, { "number", to_string(bugNumber) }, { "title", inTitle } } );
 	stringstream	issuefilename;
 	issuefilename << "issues/" << bugNumber << ".pending.json";
-	ofstream		issuefile( issuefilename.str() );
+	ofstream		issuefile( (wcPath / filesystem::path(issuefilename.str())).string() );
 	issuefile << currItem.dump();
 	
-	ofstream		statefile( "cache/bugmatic_state" );
+	ofstream		statefile( (wcPath / "cache/bugmatic_state").string() );
 	statefile << newsettings.str();
 	
-	return issuefilename.str();
+	return (wcPath / filesystem::path(issuefilename.str())).string();
 }
 
 
