@@ -19,12 +19,12 @@ using namespace bugmatic;
 void	print_syntax()
 {
 	cerr << "Syntax: bugmatic <operation> ..." << endl
-			<< "\tbugmatic init" << endl
-			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
-			<< "\tbugmatic new [<title> [<body>]]" << endl
-			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]]" << endl
-			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl
-			<< "\tbugmatic push <username> <project> [<projectUsername>]" << endl;
+			<< "\tbugmatic init # set up a new, empty issue database." << endl
+			<< "\tbugmatic clone <username> <project> [<projectUsername>] # set up a new issue database by downloading from the given Github project." << endl
+			<< "\tbugmatic new [<title> [<body>]] # Create a new, local issue in the current directory's bug database." << endl
+			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]] # list issues (optionally filtering the list)" << endl
+			<< "\tbugmatic push <username> <project> [<projectUsername>] # Create issues on Github for all local-only issues in the current directory's database." << endl
+			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl;
 }
 
 
