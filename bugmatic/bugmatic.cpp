@@ -410,7 +410,7 @@ void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<
 					{
 						double currNumber = jsonField.number_value();
 						double number = strtod( value.c_str(), nullptr );
-						if( operation == EQUAL && fabs(currNumber - number) < 0.0001 )
+						if( operation == EQUAL && fabs(currNumber - number) >= 0.0001 )
 							skip = true;
 						else if( operation == LESS && currNumber >= number )
 							skip = true;
