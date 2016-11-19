@@ -7,6 +7,25 @@ The idea is that just as you can download your Git reporsitory from Github
 and fully use it while you are on a plane, you should be able to manage your
 Github Issues.
 
+## Usage example:
+
+	mac:~ user$ mkdir mybugs
+	mac:~ user$ cd mybugs
+	mac:~ user$ bugmatic init
+	mac:~ user$ bugmatic new "I have issues!" "Let's fix them."
+	mac:~ user$ bugmatic push userName projectName
+	
+or if you already have issues on Github:
+
+	mac:~ user$ mkdir mybugs
+	mac:~ user$ cd mybugs
+	mac:~ user$ bugmatic clone userName projectName
+	mac:~ user$ bugmatic list WHERE assignee.login=userName
+	#4: Add support for OAuth
+	#5: Should report rate limit exceeded
+	mac:~ user$ bugmatic new "Fix this, too?" "I just thought of it."
+	mac:~ user$ bugmatic push userName projectName
+
 ## How does it work
 
 Currently, there's a macOS Xcode project that builds a `bugmatic` command line
