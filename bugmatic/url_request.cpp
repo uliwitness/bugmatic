@@ -155,10 +155,13 @@ std::string	url_reply::link_header_rel( std::string relValue ) const
 	std::vector<std::string>	links = url_reply::header_list_items( headers["Link"] );
 	for( const std::string& currLink : links )
 	{
-		std::string							url;
-		std::map<std::string,std::string>	attributes = url_reply::list_item_attributes( currLink, url );
-		if( attributes["rel"].compare(relValue) == 0 )
-			return url;
+		if( currLink.length() != 0 )
+		{
+			std::string							url;
+			std::map<std::string,std::string>	attributes = url_reply::list_item_attributes( currLink, url );
+			if( attributes["rel"].compare(relValue) == 0 )
+				return url;
+		}
 	}
 	
 	return std::string();
@@ -214,7 +217,8 @@ std::map<std::string,std::string>	url_reply::list_item_attributes( std::string i
 	std::map<std::string,std::string>	theResult;
 	off_t								searchPos = inHeaderLine.find_first_not_of( ' ', 0 );
 	off_t								pos = inHeaderLine.find(';', searchPos);
-	outFirstItem = inHeaderLine.substr(searchPos,pos -searchPos);
+	if( pos != std::string::npos )
+		outFirstItem = inHeaderLine.substr(searchPos,pos -searchPos);
 	if( outFirstItem.length() >= 2 && outFirstItem[0] == '<' && outFirstItem[outFirstItem.length() -1] == '>' )
 		outFirstItem = outFirstItem.substr( 1, outFirstItem.length() -2 );
 	if( pos != std::string::npos )
