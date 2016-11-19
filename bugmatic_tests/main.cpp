@@ -38,7 +38,7 @@ void	test_str_equal( const string a, const string b, size_t& numTests, size_t &n
 int main(int argc, const char * argv[])
 {
 	size_t				numTests = 0, numFailures = 0;
-	filesystem::path	test1path( filesystem::path(argv[0]).parent_path() / "data" / "testdata1" );
+	filesystem::path	test1path( filesystem::path(argv[0]).parent_path() / "testdata" / "testdata1" );
 	working_copy		wc( test1path.string() );
 	
 	cout << "note: ===== Find all uliwitness' bugs =====" << endl;
