@@ -10,6 +10,7 @@
 		554408B11D2A9336001EA2BC /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B01D2A9336001EA2BC /* main.cpp */; };
 		554408B91D2AB1E3001EA2BC /* url_request.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B71D2AB1E3001EA2BC /* url_request.cpp */; };
 		55614A781D3A431C0026B9A8 /* json11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55614A761D3A431C0026B9A8 /* json11.cpp */; };
+		55CEAE911DE0469A0099E768 /* fake_filesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,6 +32,8 @@
 		554408B81D2AB1E3001EA2BC /* url_request.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = url_request.hpp; sourceTree = "<group>"; };
 		55614A761D3A431C0026B9A8 /* json11.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = json11.cpp; path = json11/json11.cpp; sourceTree = SOURCE_ROOT; };
 		55614A771D3A431C0026B9A8 /* json11.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = json11.hpp; path = json11/json11.hpp; sourceTree = SOURCE_ROOT; };
+		55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fake_filesystem.cpp; sourceTree = "<group>"; };
+		55CEAE901DE0469A0099E768 /* fake_filesystem.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = fake_filesystem.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +69,8 @@
 				554408B01D2A9336001EA2BC /* main.cpp */,
 				554408B81D2AB1E3001EA2BC /* url_request.hpp */,
 				554408B71D2AB1E3001EA2BC /* url_request.cpp */,
+				55CEAE901DE0469A0099E768 /* fake_filesystem.hpp */,
+				55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */,
 				55614A771D3A431C0026B9A8 /* json11.hpp */,
 				55614A761D3A431C0026B9A8 /* json11.cpp */,
 			);
@@ -131,6 +136,7 @@
 				55614A781D3A431C0026B9A8 /* json11.cpp in Sources */,
 				554408B11D2A9336001EA2BC /* main.cpp in Sources */,
 				554408B91D2AB1E3001EA2BC /* url_request.cpp in Sources */,
+				55CEAE911DE0469A0099E768 /* fake_filesystem.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

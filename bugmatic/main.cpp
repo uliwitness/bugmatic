@@ -16,6 +16,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <stdio.h>
+#include "fake_filesystem.hpp"	// until <filesystem> becomes available.
 
 
 #define USER_AGENT		"bugmatic/0.1"
@@ -23,6 +24,7 @@
 
 using Json = json11::Json;
 using namespace std;
+using namespace fake;
 
 
 string	file_contents( ifstream& stream )
@@ -195,6 +197,7 @@ void	print_syntax()
 			<< "\tbugmatic init" << endl
 			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
 			<< "\tbugmatic new [<title> [<body>]]" << endl
+			<< "\tbugmatic list [WHERE field=value]" << endl
 			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl;
 }
 
@@ -219,6 +222,48 @@ int main( int argc, const char * argv[] )
 			
 			ofstream	settingsfile("cache/bugmatic_state");
 			settingsfile << "next_bug_number: " << 1 << endl;
+	
+			cout << "Done." << endl;
+		}
+		else if( operation == "list" )
+		{
+			filesystem::directory_iterator currFile(filesystem::path(argv[0]).parent_path() / "issues");
+			for( ; currFile != filesystem::directory_iterator(); ++currFile )
+			{
+				cout << (*currFile).path() << endl;
+				
+//				string	errMsg;
+//				Json	replyJson = Json::parse( replyData, errMsg );
+//				if( errMsg.length() == 0 )
+//				{
+//					for( const Json& currItem : replyJson.array_items() )
+//					{
+//						int	bugNumber = currItem["number"].int_value();
+//						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+//						for( const Json& currLabel : currItem["labels"].array_items() )
+//						{
+//							cout << " [" << currLabel["name"].string_value() << "]";
+//						}
+//						cout << endl;
+//						
+//						if( currItem["comments"].int_value() > 0 )
+//						{
+//							download_comments( bugNumber, currItem["comments_url"].string_value(), userName, password );
+//						}
+//						stringstream	issuefilename;
+//						issuefilename << "issues/" << bugNumber << ".json";
+//						ofstream		issuefile( issuefilename.str() );
+//						issuefile << currItem.dump();
+//						
+//						if( bugNumber >= nextBugNumber )
+//							nextBugNumber = bugNumber +1;
+//					}
+//				}
+//				else
+//				{
+//					cerr << errMsg << endl;
+//				}
+			}
 	
 			cout << "Done." << endl;
 		}
