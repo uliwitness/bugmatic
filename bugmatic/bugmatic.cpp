@@ -331,6 +331,7 @@ void	working_copy::clone( const remote& inRemote )
 	off_t			searchPos = 0;
 	size_t			strLen = settings.length();
 	stringstream	newsettings;
+	int				lastSynchedBugNumber = nextBugNumber -1;
 	while( true )
 	{
 		off_t pos = settings.find('\n', searchPos);
@@ -344,6 +345,11 @@ void	working_copy::clone( const remote& inRemote )
 			newsettings << "next_bug_number: " << nextBugNumber << endl;
 			nextBugNumber = 0;
 		}
+		else if( setting == "last_synchronized_bug_number" )
+		{
+			newsettings << "last_synchronized_bug_number: " << lastSynchedBugNumber << endl;
+			lastSynchedBugNumber = 0;
+		}
 		else
 			newsettings << currline << endl;
 		
@@ -355,6 +361,10 @@ void	working_copy::clone( const remote& inRemote )
 	if( nextBugNumber != 0 )
 	{
 		newsettings << "next_bug_number: " << nextBugNumber << endl;
+	}
+	else if( lastSynchedBugNumber != 0 )
+	{
+		newsettings << "last_synchronized_bug_number: " << lastSynchedBugNumber << endl;
 	}
 	
 	ofstream		statefile( "cache/bugmatic_state" );
@@ -648,5 +658,37 @@ int	working_copy::next_bug_number() const
 	
 	return bugNumber;
 }
+
+
+int	working_copy::last_synchronized_bug_number() const
+{
+	filesystem::path	wcPath(mWorkingCopyPath);
+	filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
+	ifstream			settingsfile( settingsPath.string() );
+	string				settings = file_contents( settingsfile );
+	off_t				searchPos = 0;
+	size_t				strLen = settings.length();
+	int					bugNumber = 0;
+	while( true )
+	{
+		off_t pos = settings.find('\n', searchPos);
+		if( pos == string::npos )
+			pos = strLen;
+		string currline = settings.substr( searchPos, pos -searchPos );
+		std::pair<string,string>	setting = url_reply::header_name_and_value( currline );
+		
+		if( setting.first == "last_synchronized_bug_number" )
+		{
+			bugNumber = atoi( setting.second.c_str() );
+		}
+		
+		if( pos >= strLen )
+			break;
+		searchPos = pos +1;
+	}
+	
+	return bugNumber;
+}
+
 
 

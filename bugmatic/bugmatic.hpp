@@ -122,7 +122,8 @@ public:
 	void		push( const remote& inRemote );
 	
 	int			next_bug_number() const;
-	
+	int			last_synchronized_bug_number() const;
+
 protected:
 	std::string		mWorkingCopyPath;
 };
