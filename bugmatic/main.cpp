@@ -197,7 +197,7 @@ void	print_syntax()
 			<< "\tbugmatic init" << endl
 			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
 			<< "\tbugmatic new [<title> [<body>]]" << endl
-			<< "\tbugmatic list [WHERE field=value]" << endl
+			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]]" << endl
 			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl;
 }
 
@@ -230,39 +230,65 @@ int main( int argc, const char * argv[] )
 			filesystem::directory_iterator currFile(filesystem::path(argv[0]).parent_path() / "issues");
 			for( ; currFile != filesystem::directory_iterator(); ++currFile )
 			{
-				cout << (*currFile).path() << endl;
-				
-//				string	errMsg;
-//				Json	replyJson = Json::parse( replyData, errMsg );
-//				if( errMsg.length() == 0 )
-//				{
-//					for( const Json& currItem : replyJson.array_items() )
-//					{
-//						int	bugNumber = currItem["number"].int_value();
-//						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-//						for( const Json& currLabel : currItem["labels"].array_items() )
-//						{
-//							cout << " [" << currLabel["name"].string_value() << "]";
-//						}
-//						cout << endl;
-//						
-//						if( currItem["comments"].int_value() > 0 )
-//						{
-//							download_comments( bugNumber, currItem["comments_url"].string_value(), userName, password );
-//						}
-//						stringstream	issuefilename;
-//						issuefilename << "issues/" << bugNumber << ".json";
-//						ofstream		issuefile( issuefilename.str() );
-//						issuefile << currItem.dump();
-//						
-//						if( bugNumber >= nextBugNumber )
-//							nextBugNumber = bugNumber +1;
-//					}
-//				}
-//				else
-//				{
-//					cerr << errMsg << endl;
-//				}
+				filesystem::path	fpath( (*currFile).path() );
+				string				fname( fpath.filename().string() );
+				if( fname.length() > 0 && fname[0] == '.' )
+					continue;
+				ifstream	jsonFile( fpath.string() );
+				string		fileData( file_contents( jsonFile ) );
+				string		errMsg;
+				Json		currItem = Json::parse( fileData, errMsg );
+				if( errMsg.length() == 0 )
+				{
+					bool	skip = false;
+					for( size_t x = 2; x < argc && !skip; x += 2 )
+					{
+						if( (x == 2 && strcasecmp(argv[x],"WHERE") == 0) || strcasecmp(argv[x],"AND") == 0 )
+						{
+							string condition( argv[x+1] );
+							off_t pos = condition.find('=');
+							string field( (pos != string::npos) ? condition.substr(0,pos) : "" );
+							string value( (pos != string::npos) ? condition.substr(pos +1,string::npos) : "" );
+							Json jsonField( currItem );
+							off_t fieldStart = 0;
+							while( true )
+							{
+								off_t fieldEnd = field.find('.', fieldStart);
+								string currField( field.substr(fieldStart,fieldEnd) );
+								jsonField = jsonField[currField];
+								if( fieldEnd == string::npos )
+									break;
+								fieldStart = fieldEnd +1;
+							}
+							string currValue;
+							switch( jsonField.type() )
+							{
+								case Json::STRING:
+									currValue = jsonField.string_value();
+									break;
+								default:
+									currValue = jsonField.dump();
+							}
+							if( strcasecmp(currValue.c_str(),value.c_str()) != 0 )
+								skip = true;
+						}
+					}
+					
+					if( !skip )
+					{
+						int	bugNumber = currItem["number"].int_value();
+						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+						for( const Json& currLabel : currItem["labels"].array_items() )
+						{
+							cout << " [" << currLabel["name"].string_value() << "]";
+						}
+						cout << endl;
+					}
+				}
+				else
+				{
+					cerr << errMsg << endl;
+				}
 			}
 	
 			cout << "Done." << endl;
