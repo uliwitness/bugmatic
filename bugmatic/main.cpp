@@ -22,7 +22,8 @@ void	print_syntax()
 			<< "\tbugmatic clone <username> <project> [<projectUsername>]" << endl
 			<< "\tbugmatic new [<title> [<body>]]" << endl
 			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]]" << endl
-			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl;
+			<< "\tbugmatic new-remote <username> <project> [<projectUsername>]" << endl
+			<< "\tbugmatic push <username> <project> [<projectUsername>]" << endl;
 }
 
 
@@ -132,6 +133,35 @@ int main( int argc, const char * argv[] )
 			working_copy	wc(currDir);
 			remote			theRemote( project, projectUserName, userName, password );
 			wc.clone( theRemote );
+			
+			cout << "Done." << endl;
+		}
+		else if( operation == "push" )
+		{
+			if( argc < 4 || argc > 5 )
+			{
+				print_syntax();
+				return 1;
+			}
+			string	userName = argv[2];
+			string	project = argv[3];
+			string	projectUserName = userName;
+			if( argc > 4 )
+				projectUserName = argv[4];
+
+			string	password;
+			char passBuf[1024] = {};
+
+			printf( "Password for %s: ", userName.c_str() );
+			scanf( "%s", passBuf );
+			if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
+				scanf( "%s", passBuf );
+
+			password = passBuf;
+			
+			working_copy	wc(currDir);
+			remote			theRemote( project, projectUserName, userName, password );
+			wc.push( theRemote );
 			
 			cout << "Done." << endl;
 		}

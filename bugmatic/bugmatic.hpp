@@ -78,6 +78,11 @@ public:
 	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" );return pos == mFilePath.length(); }
 	
 protected:
+	json11::Json	issue_json()	{ return mIssueMetadata; }
+	
+	friend class working_copy;
+	
+protected:
 	json11::Json	mIssueMetadata;
 	std::string		mFilePath;
 };
@@ -113,6 +118,7 @@ public:
 	void		list( std::vector<std::string> inWhereClauses, std::function<void(issue_info)> resultsCallback );
 	std::string	new_issue( std::string inTitle, std::string inBody );
 	void		new_issue_remote( const remote& inRemote, std::string inTitle, std::string inBody );
+	void		push( const remote& inRemote );
 	
 	int			next_bug_number() const;
 	

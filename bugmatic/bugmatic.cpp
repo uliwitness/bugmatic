@@ -14,6 +14,7 @@
 #include <map>
 #include <fstream>
 #include <sstream>
+#include <cassert>
 #include <sys/stat.h>
 #include <cstdio>
 #include <cmath>
@@ -480,7 +481,7 @@ std::string	working_copy::new_issue( std::string inTitle, std::string inBody )
 		searchPos = pos +1;
 	}
 	
-	Json			currItem = Json( (map<string,string>){ { "body", inBody }, { "number", to_string(bugNumber) }, { "title", inTitle } } );
+	Json			currItem = Json( (map<string,Json>){ { "body", inBody }, { "number", bugNumber }, { "title", inTitle } } );
 	stringstream	issuefilename;
 	issuefilename << "issues/" << bugNumber << ".pending.json";
 	ofstream		issuefile( (wcPath / filesystem::path(issuefilename.str())).string() );
@@ -527,6 +528,69 @@ void	working_copy::new_issue_remote( const remote& inRemote, std::string inTitle
 		ss << "POST request to " << url << " failed with curl error: " << errcode;
 		throw runtime_error( ss.str() );
 	}
+}
+
+
+void	working_copy::push( const remote& inRemote )
+{
+	list( (std::vector<std::string>){ "url=null" }, [inRemote]( issue_info currIssue )
+	{
+		string url( inRemote.url() );
+		url.append("/issues");
+
+		Json		theLabels = Json( (Json::array){ "test-bug" } );
+		Json		postBodyJson = currIssue.issue_json();
+		string postBody = postBodyJson.dump();
+		
+		url_request	request;
+		url_reply	reply;
+		
+		request.add_header( "User-Agent: " USER_AGENT );
+		request.add_header( "Content-Type: text/json" );
+		request.set_user_name( inRemote.user_name() );
+		request.set_password( inRemote.password() );
+		request.set_post_body( postBody );
+		
+		CURLcode	errcode = request.load( url, reply );
+		if( errcode == CURLE_OK )
+		{
+			if( reply.status() < 200 || reply.status() >= 300 )
+			{
+				stringstream ss;
+				ss << "POST request to " << url << " failed with HTTP error: " << reply.status();
+				throw runtime_error( ss.str() );
+			}
+			
+			string	errMsg;
+			Json	replyJson = Json::parse( reply.data(), errMsg );
+			if( errMsg.length() == 0 )
+			{
+				if( replyJson["message"].is_string() )
+				{
+					stringstream ss;
+					ss << "POST request to " << url << " failed with Github error: " << replyJson["message"].string_value();
+					throw runtime_error( ss.str() );
+				}
+				
+				off_t	pos = currIssue.filepath().rfind("/");
+				assert( pos != string::npos );
+				string newPath = currIssue.filepath().substr(0,pos+1);
+				newPath.append( to_string(replyJson["number"].int_value()) );
+				newPath.append(".json");
+				
+				ofstream	newFile(newPath);
+				newFile << replyJson.dump();
+				
+				unlink( currIssue.filepath().c_str() );
+			}
+		}
+		else
+		{
+			stringstream ss;
+			ss << "POST request to " << url << " failed with curl error: " << errcode;
+			throw runtime_error( ss.str() );
+		}
+	} );
 }
 
 
