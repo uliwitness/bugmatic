@@ -19,6 +19,7 @@ using namespace fake;
 
 
 #define TEST_STR_EQUAL(a,b)		test_str_equal( (a), (b), numTests, numFailures, __FILE__, __LINE__ )
+#define TEST_TRUE(expr)			test_true( (expr), #expr, numTests, numFailures, __FILE__, __LINE__ )
 
 
 void	test_str_equal( const string a, const string b, size_t& numTests, size_t &numFailures, const char* filePath, size_t lineNo )
@@ -29,6 +30,20 @@ void	test_str_equal( const string a, const string b, size_t& numTests, size_t &n
 	{
 		++numFailures;
 		cout << "error:" << filePath << ":" << lineNo << ": failed!" << endl << a << endl;
+	}
+	else
+		cout << "note: Passed." << endl;
+}
+
+
+void	test_true( bool inSuccess, const char* exprStr, size_t& numTests, size_t &numFailures, const char* filePath, size_t lineNo )
+{
+	++numTests;
+	
+	if( !inSuccess )
+	{
+		++numFailures;
+		cout << "error:" << filePath << ":" << lineNo << ": failed!" << endl << exprStr << endl;
 	}
 	else
 		cout << "note: Passed." << endl;
@@ -61,10 +76,24 @@ int main(int argc, const char * argv[])
 	} );
 	TEST_STR_EQUAL( output2.str(), "1,test,\n2,Found a bug,\n3,Found a bug,\n" );
 	
+	cout << "note: ===== Create a new local bug =====" << endl;
+	int	bugNumber = wc.next_bug_number();
+	cout << "note: next_bug_number = " << bugNumber << endl;
+	string issuePath = wc.new_issue( "This is local.", "It has issues." );
+	stringstream filter;
+	filter << "number=" << bugNumber;
+	bool	foundOne = false;
+	wc.list( (std::vector<std::string>){ filter.str() }, [&numTests,&numFailures,issuePath,&foundOne]( issue_info currIssue )
+	{
+		TEST_TRUE( currIssue.filepath() == issuePath );
+		foundOne = true;
+	} );
+	TEST_TRUE( foundOne );
+	
 	if( numFailures > 0 )
-		cout << "error: "<< numFailures << " tests failed." << endl;
+		cout << "error: "<< numFailures << " tests of " << numTests << " failed." << endl;
 	else
-		cout << "note: ===== Done. =====" << endl;
+		cout << "note: ===== All tests passed. =====" << endl;
 	
     return (int)numFailures;
 }
