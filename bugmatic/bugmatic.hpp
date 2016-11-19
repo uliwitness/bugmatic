@@ -110,6 +110,8 @@ public:
 	std::string	new_issue( std::string inTitle, std::string inBody );
 	void		new_issue_remote( const remote& inRemote, std::string inTitle, std::string inBody );
 	
+	int			next_bug_number() const;
+	
 protected:
 	std::string		mWorkingCopyPath;
 };

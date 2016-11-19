@@ -530,3 +530,34 @@ void	working_copy::new_issue_remote( const remote& inRemote, std::string inTitle
 }
 
 
+int	working_copy::next_bug_number() const
+{
+	filesystem::path	wcPath(mWorkingCopyPath);
+	filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
+	ifstream			settingsfile( settingsPath.string() );
+	string				settings = file_contents( settingsfile );
+	off_t				searchPos = 0;
+	size_t				strLen = settings.length();
+	int					bugNumber = 1;
+	while( true )
+	{
+		off_t pos = settings.find('\n', searchPos);
+		if( pos == string::npos )
+			pos = strLen;
+		string currline = settings.substr( searchPos, pos -searchPos );
+		std::pair<string,string>	setting = url_reply::header_name_and_value( currline );
+		
+		if( setting.first == "next_bug_number" )
+		{
+			bugNumber = atoi( setting.second.c_str() );
+		}
+		
+		if( pos >= strLen )
+			break;
+		searchPos = pos +1;
+	}
+	
+	return bugNumber;
+}
+
+
