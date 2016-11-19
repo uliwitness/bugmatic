@@ -84,9 +84,9 @@ int main( int argc, const char * argv[] )
 				body = argv[3];
 			
 			working_copy	wc( currDir );
-			string issuefilename = wc.new_issue( title, body );
+			int bugNumber = wc.new_issue( title, body );
 			
-			cout << "Created Issue " << issuefilename << "." << endl;
+			cout << "Created Issue " << bugNumber << "." << endl;
 		}
 		else if( operation == "clone" )
 		{

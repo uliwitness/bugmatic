@@ -473,7 +473,7 @@ void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<
 }
 
 
-std::string	working_copy::new_issue( std::string inTitle, std::string inBody )
+int	working_copy::new_issue( std::string inTitle, std::string inBody )
 {
 	filesystem::path	wcPath(mWorkingCopyPath);
 	filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
@@ -515,7 +515,7 @@ std::string	working_copy::new_issue( std::string inTitle, std::string inBody )
 	ofstream		statefile( (wcPath / "cache/bugmatic_state").string() );
 	statefile << newsettings.str();
 	
-	return (wcPath / filesystem::path(issuefilename.str())).string();
+	return bugNumber;
 }
 
 

@@ -13,6 +13,8 @@ Github Issues.
 	mac:~ user$ cd mybugs
 	mac:~ user$ bugmatic init
 	mac:~ user$ bugmatic new "I have issues!" "Let's fix them."
+	Created Issue 1.
+	mac:~ user$ bugmatic label showstopper 1
 	mac:~ user$ bugmatic push userName projectName
 	
 or if you already have issues on Github:

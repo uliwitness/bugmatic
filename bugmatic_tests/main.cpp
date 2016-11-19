@@ -77,15 +77,13 @@ int main(int argc, const char * argv[])
 	TEST_STR_EQUAL( output2.str(), "1,test,\n2,Found a bug,\n3,Found a bug,\n" );
 	
 	cout << "note: ===== Create a new local bug =====" << endl;
-	int	bugNumber = wc.next_bug_number();
-	cout << "note: next_bug_number = " << bugNumber << endl;
-	string issuePath = wc.new_issue( "This is local.", "It has issues." );
+	int	bugNumber = wc.new_issue( "This is local.", "It has issues." );
 	stringstream filter;
 	filter << "number=" << bugNumber;
 	bool	foundOne = false;
-	wc.list( (std::vector<std::string>){ filter.str() }, [&numTests,&numFailures,issuePath,&foundOne]( issue_info currIssue )
+	wc.list( (std::vector<std::string>){ filter.str() }, [&numTests,&numFailures,bugNumber,&foundOne]( issue_info currIssue )
 	{
-		TEST_TRUE( currIssue.filepath() == issuePath );
+		TEST_TRUE( bugNumber == currIssue.issue_number() );
 		foundOne = true;
 	} );
 	TEST_TRUE( foundOne );
