@@ -34,12 +34,12 @@ folder of JSON files on your disk, so you should not have any problems accessing
 your bugs even if you do not have Bugmatic.
 
 The `bugmatic` tool can currently download a full copy of your Github issues
-and their comments. It can also create new local bugs, and create simple bugs
-on Github. Eventually, it will be able to upload new local bugs to Github and
-sync changes from Github back down.
+and their comments. It can also create new local issues, and push them to
+Github (updating them to match the metadata Github added). Eventually, I want
+it to be able to sync changes and new issues from Github back down.
 
-Ideally, we would use Git as our backing store, or failing that, behave as
-much as Git as we can.
+Ideally, we would have Git-like features like pushing issues to collaborators
+without having to go through Github, maybe by using Git as our storage mechanism.
 
 ## License
 
