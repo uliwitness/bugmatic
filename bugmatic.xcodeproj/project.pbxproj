@@ -13,7 +13,22 @@
 		55CEAE911DE0469A0099E768 /* fake_filesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */; };
 		55CEAE991DE0792C0099E768 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE981DE0792C0099E768 /* main.cpp */; };
 		55CEAEA01DE079870099E768 /* bugmatic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE9E1DE079860099E768 /* bugmatic.cpp */; };
+		55CEAEA21DE08E380099E768 /* bugmatic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE9E1DE079860099E768 /* bugmatic.cpp */; };
+		55CEAEA31DE08E3B0099E768 /* url_request.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B71D2AB1E3001EA2BC /* url_request.cpp */; };
+		55CEAEA41DE08E3F0099E768 /* fake_filesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */; };
+		55CEAEA51DE08E420099E768 /* json11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55614A761D3A431C0026B9A8 /* json11.cpp */; };
+		55CEAEA61DE08E9A0099E768 /* data in CopyFiles */ = {isa = PBXBuildFile; fileRef = 55CEAE9D1DE079640099E768 /* data */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		55CEAEA81DE090190099E768 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 554408A51D2A9336001EA2BC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 55CEAE951DE0792C0099E768;
+			remoteInfo = bugmatic_tests;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		554408AB1D2A9336001EA2BC /* CopyFiles */ = {
@@ -27,18 +42,19 @@
 		};
 		55CEAE941DE0792C0099E768 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 16;
 			files = (
+				55CEAEA61DE08E9A0099E768 /* data in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		554408AD1D2A9336001EA2BC /* bugmatic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = bugmatic; sourceTree = BUILT_PRODUCTS_DIR; };
-		554408B01D2A9336001EA2BC /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		554408B01D2A9336001EA2BC /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = bugmatic/main.cpp; sourceTree = "<group>"; };
 		554408B71D2AB1E3001EA2BC /* url_request.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = url_request.cpp; sourceTree = "<group>"; };
 		554408B81D2AB1E3001EA2BC /* url_request.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = url_request.hpp; sourceTree = "<group>"; };
 		55614A761D3A431C0026B9A8 /* json11.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = json11.cpp; path = json11/json11.cpp; sourceTree = SOURCE_ROOT; };
@@ -73,6 +89,7 @@
 		554408A41D2A9336001EA2BC = {
 			isa = PBXGroup;
 			children = (
+				55CEAEA11DE08E2A0099E768 /* bugmatic tool */,
 				554408AF1D2A9336001EA2BC /* bugmatic */,
 				55CEAE971DE0792C0099E768 /* bugmatic_tests */,
 				554408AE1D2A9336001EA2BC /* Products */,
@@ -91,7 +108,6 @@
 		554408AF1D2A9336001EA2BC /* bugmatic */ = {
 			isa = PBXGroup;
 			children = (
-				554408B01D2A9336001EA2BC /* main.cpp */,
 				55CEAE9F1DE079860099E768 /* bugmatic.hpp */,
 				55CEAE9E1DE079860099E768 /* bugmatic.cpp */,
 				554408B81D2AB1E3001EA2BC /* url_request.hpp */,
@@ -113,6 +129,14 @@
 			path = bugmatic_tests;
 			sourceTree = "<group>";
 		};
+		55CEAEA11DE08E2A0099E768 /* bugmatic tool */ = {
+			isa = PBXGroup;
+			children = (
+				554408B01D2A9336001EA2BC /* main.cpp */,
+			);
+			name = "bugmatic tool";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -127,6 +151,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				55CEAEA91DE090190099E768 /* PBXTargetDependency */,
 			);
 			name = bugmatic;
 			productName = bugmatic;
@@ -140,6 +165,7 @@
 				55CEAE921DE0792C0099E768 /* Sources */,
 				55CEAE931DE0792C0099E768 /* Frameworks */,
 				55CEAE941DE0792C0099E768 /* CopyFiles */,
+				55CEAEAA1DE090480099E768 /* Run Tests */,
 			);
 			buildRules = (
 			);
@@ -187,6 +213,23 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		55CEAEAA1DE090480099E768 /* Run Tests */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Run Tests";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd ${BUILT_PRODUCTS_DIR}\n./bugmatic_tests";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		554408A91D2A9336001EA2BC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -205,10 +248,22 @@
 			buildActionMask = 2147483647;
 			files = (
 				55CEAE991DE0792C0099E768 /* main.cpp in Sources */,
+				55CEAEA31DE08E3B0099E768 /* url_request.cpp in Sources */,
+				55CEAEA51DE08E420099E768 /* json11.cpp in Sources */,
+				55CEAEA21DE08E380099E768 /* bugmatic.cpp in Sources */,
+				55CEAEA41DE08E3F0099E768 /* fake_filesystem.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		55CEAEA91DE090190099E768 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 55CEAE951DE0792C0099E768 /* bugmatic_tests */;
+			targetProxy = 55CEAEA81DE090190099E768 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		554408B21D2A9336001EA2BC /* Debug */ = {
@@ -319,6 +374,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				DEVELOPMENT_TEAM = RCKXACKVZS;
 				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				OTHER_LDFLAGS = "-lcurl";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -330,6 +386,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				DEVELOPMENT_TEAM = RCKXACKVZS;
 				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				OTHER_LDFLAGS = "-lcurl";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
