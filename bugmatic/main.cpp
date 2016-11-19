@@ -130,7 +130,7 @@ int main( int argc, const char * argv[] )
 			password = passBuf;
 			
 			working_copy	wc(currDir);
-			remote			theRemote( projectUserName, project, userName, password );
+			remote			theRemote( project, projectUserName, userName, password );
 			wc.clone( theRemote );
 			
 			cout << "Done." << endl;
