@@ -59,7 +59,16 @@ int main( int argc, const char * argv[] )
 			}
 			
 			working_copy	wc( currDir );
-			wc.list( whereClauses );
+			wc.list( whereClauses, []( issue_info currIssue )
+			{
+				cout << "#" << currIssue.issue_number() << ": " << currIssue.title();
+				vector<label_info>	labels = currIssue.labels();
+				for( const label_info& currLabel : labels )
+				{
+					cout << " [" << currLabel.name() << "]";
+				}
+				cout << endl;
+			} );
 			
 			cout << "Done." << endl;
 		}

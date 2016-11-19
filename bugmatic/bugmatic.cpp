@@ -196,6 +196,45 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 }
 
 
+std::vector<label_info>	issue_info::labels() const
+{
+	std::vector<label_info>	labelInfos;
+	Json					labelsJson( mIssueMetadata["labels"] );
+	
+	for( const Json& currItem : labelsJson.array_items() )
+	{
+		labelInfos.push_back( label_info( currItem ) );
+	}
+	
+	return labelInfos;
+}
+
+
+std::vector<user_info>	issue_info::assignees() const
+{
+	std::vector<user_info>	userInfos;
+	Json					assigneesJson( mIssueMetadata["assignees"] );
+	
+	for( const Json& currItem : assigneesJson.array_items() )
+	{
+		userInfos.push_back( user_info( currItem ) );
+	}
+	
+	return userInfos;
+}
+
+
+std::string remote::url() const
+{
+	string url( "https://api.github.com/repos/" );
+	url.append( mProjectAccount );
+	url.append("/");
+	url.append( mProjectName );
+	
+	return url;
+}
+
+
 void	working_copy::init()
 {
 	chdir( mWorkingCopyPath.c_str() );
@@ -221,7 +260,7 @@ void	working_copy::clone( const remote& inRemote )
 	
 	int				nextBugNumber = 1;
 	stringstream	issuesUrl;
-	issuesUrl << "https://api.github.com/repos/" << inRemote.project_account() << "/" << inRemote.project_name() << "/issues?state=all&sort=created&direction=asc";
+	issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
 	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(),
 		[inRemote,&nextBugNumber]( string replyData )
 		{
@@ -297,7 +336,7 @@ void	working_copy::clone( const remote& inRemote )
 }
 
 
-void	working_copy::list( std::vector<std::string> inWhereClauses )
+void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<void(issue_info)> resultsCallback )
 {
 	filesystem::path				wcPath(mWorkingCopyPath);
 	wcPath /= "issues";
@@ -395,13 +434,7 @@ void	working_copy::list( std::vector<std::string> inWhereClauses )
 			
 			if( !skip )
 			{
-				int	bugNumber = currItem["number"].int_value();
-				cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-				for( const Json& currLabel : currItem["labels"].array_items() )
-				{
-					cout << " [" << currLabel["name"].string_value() << "]";
-				}
-				cout << endl;
+				resultsCallback(issue_info(currItem));
 			}
 		}
 		else
@@ -462,10 +495,7 @@ std::string	working_copy::new_issue( std::string inTitle, std::string inBody )
 
 void	working_copy::new_issue_remote( const remote& inRemote, std::string inTitle, std::string inBody )
 {
-	string url = "https://api.github.com/repos/";
-	url.append( inRemote.project_account() );
-	url.append("/");
-	url.append( inRemote.project_name() );
+	string url( inRemote.url() );
 	url.append("/issues");
 
 	Json		theLabels = Json( (Json::array){ "test-bug" } );
