@@ -17,7 +17,7 @@
 		55CEAEA31DE08E3B0099E768 /* url_request.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 554408B71D2AB1E3001EA2BC /* url_request.cpp */; };
 		55CEAEA41DE08E3F0099E768 /* fake_filesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55CEAE8F1DE0469A0099E768 /* fake_filesystem.cpp */; };
 		55CEAEA51DE08E420099E768 /* json11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55614A761D3A431C0026B9A8 /* json11.cpp */; };
-		55CEAEA61DE08E9A0099E768 /* data in CopyFiles */ = {isa = PBXBuildFile; fileRef = 55CEAE9D1DE079640099E768 /* data */; };
+		55CEAEA61DE08E9A0099E768 /* testdata in CopyFiles */ = {isa = PBXBuildFile; fileRef = 55CEAE9D1DE079640099E768 /* testdata */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,7 +46,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 16;
 			files = (
-				55CEAEA61DE08E9A0099E768 /* data in CopyFiles */,
+				55CEAEA61DE08E9A0099E768 /* testdata in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,7 +63,7 @@
 		55CEAE901DE0469A0099E768 /* fake_filesystem.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = fake_filesystem.hpp; sourceTree = "<group>"; };
 		55CEAE961DE0792C0099E768 /* bugmatic_tests */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = bugmatic_tests; sourceTree = BUILT_PRODUCTS_DIR; };
 		55CEAE981DE0792C0099E768 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		55CEAE9D1DE079640099E768 /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; path = data; sourceTree = "<group>"; };
+		55CEAE9D1DE079640099E768 /* testdata */ = {isa = PBXFileReference; lastKnownFileType = folder; path = testdata; sourceTree = "<group>"; };
 		55CEAE9E1DE079860099E768 /* bugmatic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bugmatic.cpp; sourceTree = "<group>"; };
 		55CEAE9F1DE079860099E768 /* bugmatic.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = bugmatic.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -124,7 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				55CEAE981DE0792C0099E768 /* main.cpp */,
-				55CEAE9D1DE079640099E768 /* data */,
+				55CEAE9D1DE079640099E768 /* testdata */,
 			);
 			path = bugmatic_tests;
 			sourceTree = "<group>";
@@ -147,6 +147,7 @@
 				554408A91D2A9336001EA2BC /* Sources */,
 				554408AA1D2A9336001EA2BC /* Frameworks */,
 				554408AB1D2A9336001EA2BC /* CopyFiles */,
+				55CEAEAB1DE0A98E0099E768 /* Run Tests */,
 			);
 			buildRules = (
 			);
@@ -165,7 +166,6 @@
 				55CEAE921DE0792C0099E768 /* Sources */,
 				55CEAE931DE0792C0099E768 /* Frameworks */,
 				55CEAE941DE0792C0099E768 /* CopyFiles */,
-				55CEAEAA1DE090480099E768 /* Run Tests */,
 			);
 			buildRules = (
 			);
@@ -214,7 +214,7 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		55CEAEAA1DE090480099E768 /* Run Tests */ = {
+		55CEAEAB1DE0A98E0099E768 /* Run Tests */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
