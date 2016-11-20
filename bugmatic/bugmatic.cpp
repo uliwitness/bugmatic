@@ -529,43 +529,6 @@ int	working_copy::new_issue( std::string inTitle, std::string inBody )
 }
 
 
-void	working_copy::new_issue_remote( const remote& inRemote, std::string inTitle, std::string inBody )
-{
-	string url( inRemote.url() );
-	url.append("/issues");
-
-	Json		theLabels = Json( (Json::array){ "test-bug" } );
-	Json		postBodyJson = Json( (map<string,string>){ { "title", inTitle }, { "body", inBody } } );
-	string postBody = postBodyJson.dump();
-	
-	url_request	request;
-	url_reply	reply;
-	
-	request.add_header( "User-Agent: " USER_AGENT );
-	request.add_header( "Content-Type: text/json" );
-	request.set_user_name( inRemote.user_name() );
-	request.set_password( inRemote.password() );
-	request.set_post_body( postBody );
-	
-	CURLcode	errcode = request.load( url, reply );
-	if( errcode == CURLE_OK )
-	{
-		if( reply.status() < 200 || reply.status() >= 300 )
-		{
-			stringstream ss;
-			ss << "POST request to " << url << " failed with HTTP error: " << reply.status();
-			throw runtime_error( ss.str() );
-		}
-	}
-	else
-	{
-		stringstream ss;
-		ss << "POST request to " << url << " failed with curl error: " << errcode;
-		throw runtime_error( ss.str() );
-	}
-}
-
-
 void	working_copy::push( const remote& inRemote )
 {
 	list( (std::vector<std::string>){ "url=null" }, [inRemote]( issue_info currIssue )

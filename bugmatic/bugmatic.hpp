@@ -118,7 +118,6 @@ public:
 	void		clone( const remote& inRemote );
 	void		list( std::vector<std::string> inWhereClauses, std::function<void(issue_info)> resultsCallback );
 	int			new_issue( std::string inTitle, std::string inBody );
-	void		new_issue_remote( const remote& inRemote, std::string inTitle, std::string inBody );
 	void		push( const remote& inRemote );
 	
 	int			next_bug_number() const;
