@@ -24,6 +24,7 @@ void	print_syntax()
 			<< "\tbugmatic new [<title> [<body>]] # Create a new, local issue in the current directory's bug database." << endl
 			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]] # list issues (optionally filtering the list)" << endl
 			<< "\tbugmatic push <username> <project> [<projectUsername>] # Create issues on Github for all local-only issues in the current directory's database." << endl
+			<< "\tbugmatic pull <username> <project> [<projectUsername>] # Download issues added on Github since we last cloned or pulled into the current directory's database." << endl
 			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl;
 }
 
@@ -143,6 +144,35 @@ int main( int argc, const char * argv[] )
 			working_copy	wc(currDir);
 			remote			theRemote( project, projectUserName, userName, password );
 			wc.push( theRemote );
+			
+			cout << "Done." << endl;
+		}
+		else if( operation == "pull" )
+		{
+			if( argc < 4 || argc > 5 )
+			{
+				print_syntax();
+				return 1;
+			}
+			string	userName = argv[2];
+			string	project = argv[3];
+			string	projectUserName = userName;
+			if( argc > 4 )
+				projectUserName = argv[4];
+
+			string	password;
+			char passBuf[1024] = {};
+
+			printf( "Password for %s: ", userName.c_str() );
+			scanf( "%s", passBuf );
+			if( passBuf[0] == 0 )	// Seems Xcode sometimes skips the first read call. So try again in case it's Xcode's stupid console.
+				scanf( "%s", passBuf );
+
+			password = passBuf;
+			
+			working_copy	wc(currDir);
+			remote			theRemote( project, projectUserName, userName, password );
+			wc.pull( theRemote );
 			
 			cout << "Done." << endl;
 		}

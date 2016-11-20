@@ -49,11 +49,11 @@ string	file_contents( ifstream& stream )
 }
 
 
-void	paged_cached_download( string url, string fname, string userName, string password, std::function<void(string)> fileContentsCallback )
+void	paged_cached_download( string url, string fname, string userName, string password, bool ignoreCache, std::function<void(string)> fileContentsCallback )
 {
 	ifstream	downloadedjson;
 	downloadedjson.open(fname);
-	if( downloadedjson.is_open() )
+	if( downloadedjson.is_open() && !ignoreCache )
 	{
 		size_t	x = 1;
 		while( true )
@@ -127,12 +127,12 @@ void	paged_cached_download( string url, string fname, string userName, string pa
 }
 
 
-string	cached_download( string url, string fname, string userName, string password )
+string	cached_download( string url, string fname, string userName, string password, bool ignoreCache )
 {
 	string		replyData;
 	ifstream	downloadedjson;
 	downloadedjson.open(fname);
-	if( downloadedjson.is_open() )
+	if( downloadedjson.is_open() && !ignoreCache )
 	{
 		cout << "\tUsing cached data from '" << fname << "'." << endl;
 		replyData = file_contents( downloadedjson );
@@ -170,7 +170,7 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 	ifstream		downloadedcommentsjson;
 	stringstream	downloadedcommentsfilename;
 	downloadedcommentsfilename << "cache/" << bugNumber << "_comments_downloaded.json";
-	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password );
+	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password, false );
 	
 	stringstream	issuecommentfoldername;
 	issuecommentfoldername << "issues/" << bugNumber << "_comments";
@@ -271,7 +271,7 @@ void	working_copy::init()
 	mkdir("cache",0777);
 	
 	ofstream	settingsfile("cache/bugmatic_state");
-	settingsfile << "next_bug_number: " << 1 << endl;
+	settingsfile << "next_bug_number:" << 1 << endl;
 }
 
 
@@ -293,7 +293,7 @@ void	working_copy::clone( const remote& inRemote )
 	int				nextBugNumber = 1;
 	stringstream	issuesUrl;
 	issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
-	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(),
+	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), false,
 		[inRemote,&nextBugNumber]( string replyData )
 		{
 			string	errMsg;
@@ -347,12 +347,12 @@ void	working_copy::clone( const remote& inRemote )
 		
 		if( setting == "next_bug_number" )
 		{
-			newsettings << "next_bug_number: " << nextBugNumber << endl;
+			newsettings << "next_bug_number:" << nextBugNumber << endl;
 			nextBugNumber = 0;
 		}
 		else if( setting == "last_synchronized_date" )
 		{
-			newsettings << "last_synchronized_date: " << currDate << endl;
+			newsettings << "last_synchronized_date:" << currDate << endl;
 			currDate = "";
 		}
 		else
@@ -365,11 +365,11 @@ void	working_copy::clone( const remote& inRemote )
 	
 	if( nextBugNumber != 0 )
 	{
-		newsettings << "next_bug_number: " << nextBugNumber << endl;
+		newsettings << "next_bug_number:" << nextBugNumber << endl;
 	}
 	if( currDate.length() != 0 )
 	{
-		newsettings << "last_synchronized_date: " << currDate << endl;
+		newsettings << "last_synchronized_date:" << currDate << endl;
 	}
 	
 	ofstream		statefile( "cache/bugmatic_state" );
@@ -509,7 +509,7 @@ int	working_copy::new_issue( std::string inTitle, std::string inBody )
 		if( setting.first == "next_bug_number" )
 		{
 			bugNumber = atoi( setting.second.c_str() );
-			newsettings << "next_bug_number: " << (bugNumber +1) << endl;
+			newsettings << "next_bug_number:" << (bugNumber +1) << endl;
 		}
 		else
 		{
@@ -594,6 +594,106 @@ void	working_copy::push( const remote& inRemote )
 			throw runtime_error( ss.str() );
 		}
 	} );
+}
+
+
+void	working_copy::pull( const remote& inRemote )
+{
+	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
+	
+	chdir( mWorkingCopyPath.c_str() );
+
+    time_t now;
+    time(&now);
+	char dateStr[64] = {0};
+	strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
+	string currDate( dateStr );
+	
+	int				nextBugNumber = 1;
+	stringstream	issuesUrl;
+	issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
+	cout << issuesUrl.str() << endl;
+	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
+		[inRemote,&nextBugNumber]( string replyData )
+		{
+			string	errMsg;
+			Json	replyJson = Json::parse( replyData, errMsg );
+			if( errMsg.length() == 0 )
+			{
+				for( const Json& currItem : replyJson.array_items() )
+				{
+					int	bugNumber = currItem["number"].int_value();
+					cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+					for( const Json& currLabel : currItem["labels"].array_items() )
+					{
+						cout << " [" << currLabel["name"].string_value() << "]";
+					}
+					cout << endl;
+					
+					if( currItem["comments"].int_value() > 0 )
+					{
+						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password() );
+					}
+					stringstream	issuefilename;
+					issuefilename << "issues/" << bugNumber << ".json";
+					ofstream		issuefile( issuefilename.str() );
+					issuefile << currItem.dump();
+					
+					if( bugNumber >= nextBugNumber )
+						nextBugNumber = bugNumber +1;
+				}
+			}
+			else
+			{
+				stringstream ss("JSON parser failed: ");
+				ss << errMsg;
+				throw runtime_error(ss.str());
+			}
+		} );
+
+	// Write out highest bug number so we don't need to search the database to add a bug:
+	ifstream		settingsfile("cache/bugmatic_state");
+	string			settings = file_contents( settingsfile );
+	off_t			searchPos = 0;
+	size_t			strLen = settings.length();
+	stringstream	newsettings;
+	while( true )
+	{
+		off_t pos = settings.find('\n', searchPos);
+		if( pos == string::npos )
+			pos = strLen;
+		string currline = settings.substr( searchPos, pos -searchPos );
+		string	setting = url_reply::header_name( currline );
+		
+		if( setting == "next_bug_number" )
+		{
+			newsettings << "next_bug_number:" << nextBugNumber << endl;
+			nextBugNumber = 0;
+		}
+		else if( setting == "last_synchronized_date" )
+		{
+			newsettings << "last_synchronized_date:" << currDate << endl;
+			currDate = "";
+		}
+		else
+			newsettings << currline << endl;
+		
+		if( pos >= strLen )
+			break;
+		searchPos = pos +1;
+	}
+	
+	if( nextBugNumber != 0 )
+	{
+		newsettings << "next_bug_number:" << nextBugNumber << endl;
+	}
+	if( currDate.length() != 0 )
+	{
+		newsettings << "last_synchronized_date:" << currDate << endl;
+	}
+	
+	ofstream		statefile( "cache/bugmatic_state" );
+	statefile << newsettings.str();
 }
 
 

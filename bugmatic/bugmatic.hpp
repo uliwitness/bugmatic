@@ -119,6 +119,7 @@ public:
 	void		list( std::vector<std::string> inWhereClauses, std::function<void(issue_info)> resultsCallback );
 	int			new_issue( std::string inTitle, std::string inBody );
 	void		push( const remote& inRemote );
+	void		pull( const remote& inRemote );
 	
 	int			next_bug_number() const;
 	std::string	last_synchronized_date() const;
