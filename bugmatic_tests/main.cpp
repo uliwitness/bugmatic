@@ -11,6 +11,7 @@
 #include <sstream>
 #include "bugmatic.hpp"
 #include "fake_filesystem.hpp"
+#include "md5hash.hpp"
 
 
 using namespace std;
@@ -19,7 +20,27 @@ using namespace fake;
 
 
 #define TEST_STR_EQUAL(a,b)		test_str_equal( (a), (b), numTests, numFailures, __FILE__, __LINE__ )
+#define TEST_STR_NOT_EQUAL(a,b)	test_str_not_equal( (a), (b), numTests, numFailures, __FILE__, __LINE__ )
 #define TEST_TRUE(expr)			test_true( (expr), #expr, numTests, numFailures, __FILE__, __LINE__ )
+
+
+string escape_string( string msg )
+{
+	off_t pos = 0;
+	while( (pos = msg.find('\n')) != string::npos )
+	{
+		msg.replace( pos, 1, "\\n" );
+	}
+	while( (pos = msg.find('\r')) != string::npos )
+	{
+		msg.replace( pos, 1, "\\r" );
+	}
+	while( (pos = msg.find('"')) != string::npos )
+	{
+		msg.replace( pos, 1, "\\\"" );
+	}
+	return msg;
+}
 
 
 void	test_str_equal( const string a, const string b, size_t& numTests, size_t &numFailures, const char* filePath, size_t lineNo )
@@ -32,7 +53,21 @@ void	test_str_equal( const string a, const string b, size_t& numTests, size_t &n
 		cout << "error:" << filePath << ":" << lineNo << ": failed!" << endl << a << endl;
 	}
 	else
-		cout << "note: Passed." << endl;
+		cout << "note: \"" << escape_string(a) << "\" == \"" << escape_string(b) << "\": Passed." << endl;
+}
+
+
+void	test_str_not_equal( const string a, const string b, size_t& numTests, size_t &numFailures, const char* filePath, size_t lineNo )
+{
+	++numTests;
+	
+	if( a.compare(b) == 0 )
+	{
+		++numFailures;
+		cout << "error:" << filePath << ":" << lineNo << ": failed!" << endl << a << endl;
+	}
+	else
+		cout << "note: \"" << escape_string(a) << "\" != \"" << escape_string(b) << "\": Passed." << endl;
 }
 
 
@@ -46,7 +81,7 @@ void	test_true( bool inSuccess, const char* exprStr, size_t& numTests, size_t &n
 		cout << "error:" << filePath << ":" << lineNo << ": failed!" << endl << exprStr << endl;
 	}
 	else
-		cout << "note: Passed." << endl;
+		cout << "note: \"" << exprStr << "\": Passed." << endl;
 }
 
 
@@ -87,6 +122,16 @@ int main(int argc, const char * argv[])
 		foundOne = true;
 	} );
 	TEST_TRUE( foundOne );
+
+	cout << "note: ===== Test hash function =====" << endl;
+	TEST_STR_EQUAL( hash_string("Same"), hash_string("Same") );
+	TEST_STR_EQUAL( hash_string("Same"), "c9c90a13d8ec8fe53c6bb33fe10af6f2fe" );
+	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("Different") );
+	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("same") );
+	TEST_STR_NOT_EQUAL( hash_string("long"), hash_string("Same") );
+	TEST_STR_NOT_EQUAL( hash_string("same"), hash_string("Same") );
+	TEST_STR_NOT_EQUAL( hash_string("Different"), hash_string("Same") );
+	TEST_STR_EQUAL( hash_string(""), "d4d41d8cd98f00b204e9800998ecf8427e" );
 	
 	if( numFailures > 0 )
 		cout << "error: "<< numFailures << " tests of " << numTests << " failed." << endl;
