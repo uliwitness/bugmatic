@@ -20,17 +20,14 @@
 #include <cstdio>
 #include <cmath>
 #include <unistd.h>
-#include <CommonCrypto/CommonCrypto.h>
 #include "json11.hpp"
 #include "url_request.hpp"
 #include "fake_filesystem.hpp"	// until <filesystem> becomes available.
 #include "configfile.hpp"
+#include "md5hash.hpp"
 
 
 #define USER_AGENT		"bugmatic/0.1"
-
-
-#define hex_char(n)		setw(2) << setfill('0') << hex << int(n)
 
 
 using Json = json11::Json;
@@ -54,23 +51,6 @@ string	file_contents( ifstream& stream )
 	return replyData;
 }
 
-
-string hash_string( const std::string& inData )
-{
-	stringstream issueHash;
-	unsigned char hash[CC_MD5_DIGEST_LENGTH];
-	CC_MD5( inData.data(), (CC_LONG)inData.size(), hash );
-	issueHash << hex_char(hash[0]) << hex_char(hash[0]) << hex_char(hash[1]) << hex_char(hash[2]) << hex_char(hash[3]) << hex_char(hash[4]) << hex_char(hash[5]) << hex_char(hash[6]) << hex_char(hash[7]) << hex_char(hash[8]) << hex_char(hash[9]) << hex_char(hash[10]) << hex_char(hash[11]) << hex_char(hash[12]) << hex_char(hash[13]) << hex_char(hash[14]) << hex_char(hash[15]) << dec;
-	return issueHash.str();
-}
-
-
-string hash_md5_file( const std::string& inFileName )
-{
-	ifstream	issueFileIn(inFileName);
-	string issueJsonStr = file_contents(issueFileIn);
-	return hash_string( issueJsonStr );
-}
 
 void	paged_cached_download( string url, string fname, string userName, string password, bool ignoreCache, std::function<void(string)> fileContentsCallback )
 {
@@ -677,7 +657,9 @@ void	working_copy::pull( const remote& inRemote )
 					// Already have a file of this name?
 					if( filesystem::exists(filesystem::path(issuefilename.str())) )
 					{
-						string fileHash = hash_md5_file( issuefilename.str() );
+						ifstream	issueFileIn(issuefilename.str());
+						string issueJsonStr = file_contents(issueFileIn);
+						string fileHash = hash_string( issueJsonStr );
 						string pristineHash = hashesFile.value_for_key(to_string(bugNumber));
 						if( pristineHash != fileHash )
 						{
