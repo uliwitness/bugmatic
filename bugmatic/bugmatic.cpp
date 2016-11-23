@@ -9,6 +9,7 @@
 #include "bugmatic.hpp"
 #include <curl/curl.h>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <map>
@@ -19,12 +20,17 @@
 #include <cstdio>
 #include <cmath>
 #include <unistd.h>
+#include <CommonCrypto/CommonCrypto.h>
 #include "json11.hpp"
 #include "url_request.hpp"
 #include "fake_filesystem.hpp"	// until <filesystem> becomes available.
+#include "configfile.hpp"
 
 
 #define USER_AGENT		"bugmatic/0.1"
+
+
+#define hex_char(n)		setw(2) << setfill('0') << hex << int(n)
 
 
 using Json = json11::Json;
@@ -48,6 +54,23 @@ string	file_contents( ifstream& stream )
 	return replyData;
 }
 
+
+string hash_string( const std::string& inData )
+{
+	stringstream issueHash;
+	unsigned char hash[CC_MD5_DIGEST_LENGTH];
+	CC_MD5( inData.data(), (CC_LONG)inData.size(), hash );
+	issueHash << hex_char(hash[0]) << hex_char(hash[0]) << hex_char(hash[1]) << hex_char(hash[2]) << hex_char(hash[3]) << hex_char(hash[4]) << hex_char(hash[5]) << hex_char(hash[6]) << hex_char(hash[7]) << hex_char(hash[8]) << hex_char(hash[9]) << hex_char(hash[10]) << hex_char(hash[11]) << hex_char(hash[12]) << hex_char(hash[13]) << hex_char(hash[14]) << hex_char(hash[15]) << dec;
+	return issueHash.str();
+}
+
+
+string hash_md5_file( const std::string& inFileName )
+{
+	ifstream	issueFileIn(inFileName);
+	string issueJsonStr = file_contents(issueFileIn);
+	return hash_string( issueJsonStr );
+}
 
 void	paged_cached_download( string url, string fname, string userName, string password, bool ignoreCache, std::function<void(string)> fileContentsCallback )
 {
@@ -279,6 +302,13 @@ void	working_copy::clone( const remote& inRemote )
 {
 	chdir( mWorkingCopyPath.c_str() );
 
+	filesystem::path	wcPath(mWorkingCopyPath);
+	if( filesystem::exists( (wcPath / filesystem::path("issues")).string() )
+		|| filesystem::exists( (wcPath / filesystem::path("milestones")).string() )
+		|| filesystem::exists( (wcPath / filesystem::path("users")).string() )
+		|| filesystem::exists( (wcPath / filesystem::path("cache")).string() ) )
+		throw runtime_error( "Can't clone into folder that already contains an issue database." );
+	
 	mkdir("issues",0777);
 	mkdir("milestones",0777);
 	mkdir("users",0777);
@@ -290,11 +320,13 @@ void	working_copy::clone( const remote& inRemote )
 	strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
 	string currDate( dateStr );
 	
+	configfile		issueHashes("cache/hashes");
+	
 	int				nextBugNumber = 1;
 	stringstream	issuesUrl;
 	issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
-	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), false,
-		[inRemote,&nextBugNumber]( string replyData )
+	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
+		[inRemote,&nextBugNumber,&issueHashes]( string replyData )
 		{
 			string	errMsg;
 			Json	replyJson = Json::parse( replyData, errMsg );
@@ -317,7 +349,10 @@ void	working_copy::clone( const remote& inRemote )
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
 					ofstream		issuefile( issuefilename.str() );
-					issuefile << currItem.dump();
+					string			issueJsonStr( currItem.dump() );
+					issuefile << issueJsonStr;
+					
+					issueHashes.set_value_for_key( to_string(bugNumber), hash_string( issueJsonStr ) );
 					
 					if( bugNumber >= nextBugNumber )
 						nextBugNumber = bugNumber +1;
@@ -601,6 +636,8 @@ void	working_copy::pull( const remote& inRemote )
 {
 	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
 	
+	configfile	hashesFile( "cache/hashes" );
+	
 	chdir( mWorkingCopyPath.c_str() );
 
     time_t now;
@@ -614,7 +651,7 @@ void	working_copy::pull( const remote& inRemote )
 	issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
 	cout << issuesUrl.str() << endl;
 	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-		[inRemote,&nextBugNumber]( string replyData )
+		[inRemote,&nextBugNumber,&hashesFile]( string replyData )
 		{
 			string	errMsg;
 			Json	replyJson = Json::parse( replyData, errMsg );
@@ -636,8 +673,25 @@ void	working_copy::pull( const remote& inRemote )
 					}
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
+					
+					// Already have a file of this name?
+					if( filesystem::exists(filesystem::path(issuefilename.str())) )
+					{
+						string fileHash = hash_md5_file( issuefilename.str() );
+						string pristineHash = hashesFile.value_for_key(to_string(bugNumber));
+						if( pristineHash != fileHash )
+						{
+							stringstream errMsg;
+							errMsg << "Can't pull issue #" << bugNumber << " because the changes to it would be overwritten.";
+							throw runtime_error(errMsg.str());
+						}
+					}
+					
 					ofstream		issuefile( issuefilename.str() );
-					issuefile << currItem.dump();
+					string			issueJsonStr( currItem.dump() );
+					issuefile << issueJsonStr;
+					
+					hashesFile.set_value_for_key(to_string(bugNumber), hash_string(issueJsonStr));
 					
 					if( bugNumber >= nextBugNumber )
 						nextBugNumber = bugNumber +1;
@@ -650,7 +704,7 @@ void	working_copy::pull( const remote& inRemote )
 				throw runtime_error(ss.str());
 			}
 		} );
-
+	
 	// Write out highest bug number so we don't need to search the database to add a bug:
 	ifstream		settingsfile("cache/bugmatic_state");
 	string			settings = file_contents( settingsfile );

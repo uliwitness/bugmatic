@@ -8,8 +8,10 @@
 
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 #include "bugmatic.hpp"
 #include <unistd.h>
+#include <CommonCrypto/CommonCrypto.h>
 
 
 using namespace std;
@@ -27,6 +29,9 @@ void	print_syntax()
 			<< "\tbugmatic pull <username> <project> [<projectUsername>] # Download issues added on Github since we last cloned or pulled into the current directory's database." << endl
 			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl;
 }
+
+
+#define hex_char(n)		setw(2) << setfill('0') << hex << int(n)
 
 
 int main( int argc, const char * argv[] )

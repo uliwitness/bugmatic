@@ -8,9 +8,18 @@
 
 #include "fake_filesystem.hpp"
 #include <dirent.h>
+#include <sys/stat.h>
 
 
 using namespace fake::filesystem;
+
+
+bool	fake::filesystem::exists( const path& inPath )
+{
+	struct stat sb;
+
+	return( stat(inPath.string().c_str(), &sb) == 0 );
+}
 
 
 std::ostream& fake::filesystem::operator << ( std::ostream& inOutputStream, const path& inPath )

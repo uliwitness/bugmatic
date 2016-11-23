@@ -31,7 +31,7 @@ namespace filesystem
 		path( const path& ) = default;
 		path( path&& ) = default;
 		path( const char* inStr ) : mPath(inStr) {}
-		explicit path( const std::string inStr ) : mPath(inStr) {}
+		path( const std::string inStr ) : mPath(inStr) {}
 		
 		path& operator = ( const path& ) = default;
 		bool operator == ( const path& inOther ) const { return mPath.compare( inOther.mPath ) == 0; }
@@ -43,11 +43,14 @@ namespace filesystem
 		path filename() const;
 		path parent_path() const;
 		std::string	string() const { return mPath; }
+		operator const std::string() const { return mPath; }
 	
 	protected:
 		std::string	mPath;
 	};
 
+	bool	exists( const path& inPath );
+	
 	std::ostream& operator << ( std::ostream& inOutputStream, const path& inPath );
 	
 	class directory_entry
