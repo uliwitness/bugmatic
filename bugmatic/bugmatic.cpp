@@ -260,6 +260,40 @@ void	issue_info::add_label( std::string inLabelName )
 }
 
 
+std::vector<comment_info>	issue_info::comments() const
+{
+	std::vector<comment_info>	commentInfos;
+
+	filesystem::path	commentFolderPath(filesystem::path(mFilePath).parent_path() / (to_string(issue_number()) + "_comments"));
+	
+	// +++ TODO: need to sort filenames or we get mis-ordered comments.
+	//	Could also sort commentInfos vector by date or so instead.
+	filesystem::directory_iterator	currFile(commentFolderPath);
+	for( ; currFile != filesystem::directory_iterator(); ++currFile )
+	{
+		ifstream	jsonFile( (*currFile).path().string() );
+		string		fileData( file_contents( jsonFile ) );
+		string		errMsg;
+		Json		currItem = Json::parse( fileData, errMsg );
+		if( errMsg.length() > 0 )
+		{
+			stringstream errStr;
+			errStr << "Can't parse comment for #" << issue_number() << ": " << errMsg;
+			throw runtime_error(errStr.str());
+		}
+		commentInfos.push_back( comment_info( currItem ) );
+	}
+	
+	return commentInfos;
+}
+
+
+void	issue_info::add_comment( const comment_info& inComment )
+{
+	
+}
+
+
 std::vector<user_info>	issue_info::assignees() const
 {
 	std::vector<user_info>	userInfos;
@@ -423,6 +457,8 @@ void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<
 		filesystem::path	fpath( (*currFile).path() );
 		string				fname( fpath.filename().string() );
 		if( fname.length() > 0 && fname[0] == '.' )
+			continue;
+		if( fname.rfind(".json") != fname.length() -5 )
 			continue;
 		ifstream	jsonFile( fpath.string() );
 		string		fileData( file_contents( jsonFile ) );

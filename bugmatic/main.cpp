@@ -27,7 +27,8 @@ void	print_syntax()
 			<< "\tbugmatic list [WHERE field=value [AND field=value [AND ...]]] # list issues (optionally filtering the list)" << endl
 			<< "\tbugmatic push <username> <project> [<projectUsername>] # Create issues on Github for all local-only issues in the current directory's database." << endl
 			<< "\tbugmatic pull <username> <project> [<projectUsername>] # Download issues added on Github since we last cloned or pulled into the current directory's database." << endl
-			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl;
+			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl
+			<< "\tbugmatic issue [<issueNumber>] # Display a given issue (defaults to the last created issue)." << endl;
 }
 
 
@@ -200,6 +201,39 @@ int main( int argc, const char * argv[] )
 			wc.list((std::vector<std::string>) {criterion.str()}, [labelName](issue_info currIssue)
 			{
 				currIssue.add_label( labelName );
+			});
+			
+			cout << "Done." << endl;
+		}
+		else if( operation == "issue" )
+		{
+			if( argc < 2 )
+			{
+				print_syntax();
+				return 1;
+			}
+
+			working_copy	wc( currDir );
+			int bugNumber = (argc >= 3) ? atoi(argv[2]) : wc.next_bug_number() -1;
+			
+			stringstream criterion;
+			criterion << "number=";
+			criterion << bugNumber;
+			
+			wc.list((std::vector<std::string>) {criterion.str()}, [](issue_info currIssue)
+			{
+				cout << "# " << currIssue.title();
+				for( const label_info& currLabel : currIssue.labels() )
+				{
+					cout << " [" << currLabel.name() << "]";
+				}
+				cout << endl << currIssue.body() << endl << endl;
+				
+				for( const comment_info& currComment : currIssue.comments() )
+				{
+					cout << "## " << currComment.user().user_login() << " @ " << currComment.created_at() << endl;
+					cout << currComment.body() << endl << endl;
+				}
 			});
 			
 			cout << "Done." << endl;

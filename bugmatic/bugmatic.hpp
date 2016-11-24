@@ -52,6 +52,26 @@ protected:
 };
 
 
+class comment_info
+{
+public:
+	comment_info( json11::Json inJson ) : mCommentMetadata(inJson) {}
+	
+	std::string	body() const				{ return mCommentMetadata["body"].string_value(); }
+	std::string	created_at() const			{ return mCommentMetadata["created_at"].string_value(); }
+	std::string	updated_at() const			{ return mCommentMetadata["updated_at"].string_value(); }
+	std::string	html_url() const			{ return mCommentMetadata["html_url"].string_value(); }
+	std::string	url() const					{ return mCommentMetadata["url"].string_value(); }
+	std::string	issue_url() const			{ return mCommentMetadata["issue_url"].string_value(); }
+	user_info	user() const				{ return user_info( mCommentMetadata["user"] ); }
+
+	int			comment_id() const			{ return mCommentMetadata["id"].int_value(); }
+	
+protected:
+	json11::Json	mCommentMetadata;
+};
+
+
 class issue_info
 {
 public:
@@ -60,6 +80,7 @@ public:
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
 	std::string	body() const				{ return mIssueMetadata["body"].string_value(); }
+	std::string	created_at() const			{ return mIssueMetadata["created_at"].string_value(); }
 	std::string	closed_at() const			{ return mIssueMetadata["closed_at"].string_value(); }
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
 	std::string	html_url() const			{ return mIssueMetadata["html_url"].string_value(); }
@@ -69,6 +90,9 @@ public:
 
 	std::vector<label_info>	labels() const;
 	void					add_label( std::string inLabelName );
+
+	std::vector<comment_info>	comments() const;
+	void						add_comment( const comment_info& inComment );
 	
 	std::vector<user_info>	assignees() const;
 	user_info				user() const	{ return user_info( mIssueMetadata["user"] ); }
