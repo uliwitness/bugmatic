@@ -168,16 +168,20 @@ string	cached_download( string url, string fname, string userName, string passwo
 }
 
 
-void	download_comments( int bugNumber, string commentsURL, string userName, string password )
+void	download_comments( int bugNumber, string commentsURL, string userName, string password, bool ignoreCache )
 {
 	ifstream		downloadedcommentsjson;
 	stringstream	downloadedcommentsfilename;
 	downloadedcommentsfilename << "cache/" << bugNumber << "_comments_downloaded.json";
-	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password, false );
+	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password, ignoreCache );
 	
 	stringstream	issuecommentfoldername;
 	issuecommentfoldername << "issues/" << bugNumber << "_comments";
-	mkdir( issuecommentfoldername.str().c_str(), 0777);
+	mkdir( issuecommentfoldername.str().c_str(), 0777 );
+	stringstream	issuehashesfilename;
+	issuehashesfilename << "cache/" << bugNumber << "_comments_hashes";
+	
+	configfile	commentHashes( issuehashesfilename.str() );
 	
 	string	errMsg;
 	Json	commentsJson = Json::parse( commentsdata, errMsg );
@@ -187,10 +191,27 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 		{
 			stringstream	issuecommentfilename;
 			issuecommentfilename << issuecommentfoldername.str() << "/" << currComment["id"].int_value() << ".json";
-			string			fn = issuecommentfilename.str();
-			ofstream	commentfile(fn);
+			string		fn = issuecommentfilename.str();
 			string		fc = currComment.dump();
+			
+			if( filesystem::exists(fn) )
+			{
+				ifstream	localFile( fn );
+				string		localJson( file_contents(localFile) );
+				string		fileHash = hash_string( localJson );
+				string		pristineHash = commentHashes.value_for_key(to_string(currComment["id"].int_value()));
+				
+				if( fileHash != pristineHash )
+				{
+					stringstream errMsg;
+					errMsg << "Can't pull comments for issue #" << bugNumber << " because the changes to them would be overwritten.";
+					throw runtime_error(errMsg.str());
+				}
+			}
+			
+			ofstream	commentfile(fn);
 			commentfile << fc;
+			commentHashes.set_value_for_key( to_string(currComment["id"].int_value()), hash_string(fc) );
 		}
 	}
 	else
@@ -324,7 +345,7 @@ void	working_copy::clone( const remote& inRemote )
 					
 					if( currItem["comments"].int_value() > 0 )
 					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password() );
+						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true );
 					}
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
@@ -649,7 +670,7 @@ void	working_copy::pull( const remote& inRemote )
 					
 					if( currItem["comments"].int_value() > 0 )
 					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password() );
+						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true );
 					}
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
