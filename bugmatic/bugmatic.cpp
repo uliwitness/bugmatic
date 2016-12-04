@@ -615,61 +615,71 @@ int	working_copy::new_issue( std::string inTitle, std::string inBody )
 
 void	working_copy::push( const remote& inRemote )
 {
-	list( (std::vector<std::string>){ "url=null" }, [inRemote]( issue_info currIssue )
+	configfile	hashesFile( "cache/hashes" );
+
+	list( std::vector<std::string>(), [inRemote,&hashesFile]( issue_info currIssue )
 	{
 		string url( inRemote.url() );
 		url.append("/issues");
 
-		Json		theLabels = Json( (Json::array){ "test-bug" } );
-		Json		postBodyJson = currIssue.issue_json();
-		string postBody = postBodyJson.dump();
+		Json	postBodyJson = currIssue.issue_json();
+		string	postBody = postBodyJson.dump();
 		
-		url_request	request;
-		url_reply	reply;
-		
-		request.add_header( "User-Agent: " USER_AGENT );
-		request.add_header( "Content-Type: text/json" );
-		request.set_user_name( inRemote.user_name() );
-		request.set_password( inRemote.password() );
-		request.set_post_body( postBody );
-		
-		CURLcode	errcode = request.load( url, reply );
-		if( errcode == CURLE_OK )
+		if( currIssue.url() == "" )	// New, not yet on Github.
 		{
-			if( reply.status() < 200 || reply.status() >= 300 )
-			{
-				stringstream ss;
-				ss << "POST request to " << url << " failed with HTTP error: " << reply.status();
-				throw runtime_error( ss.str() );
-			}
+			url_request	request;
+			url_reply	reply;
 			
-			string	errMsg;
-			Json	replyJson = Json::parse( reply.data(), errMsg );
-			if( errMsg.length() == 0 )
+			request.add_header( "User-Agent: " USER_AGENT );
+			request.add_header( "Content-Type: text/json" );
+			request.set_user_name( inRemote.user_name() );
+			request.set_password( inRemote.password() );
+			request.set_post_body( postBody );
+			
+			CURLcode	errcode = request.load( url, reply );
+			if( errcode == CURLE_OK )
 			{
-				if( replyJson["message"].is_string() )
+				if( reply.status() < 200 || reply.status() >= 300 )
 				{
 					stringstream ss;
-					ss << "POST request to " << url << " failed with Github error: " << replyJson["message"].string_value();
+					ss << "POST request to " << url << " failed with HTTP error: " << reply.status();
 					throw runtime_error( ss.str() );
 				}
 				
-				off_t	pos = currIssue.filepath().rfind("/");
-				assert( pos != string::npos );
-				string newPath = currIssue.filepath().substr(0,pos+1);
-				newPath.append( to_string(replyJson["number"].int_value()) );
-				newPath.append(".json");
-				
-				ofstream	newFile(newPath);
-				newFile << replyJson.dump();
-				
-				unlink( currIssue.filepath().c_str() );
+				string	errMsg;
+				Json	replyJson = Json::parse( reply.data(), errMsg );
+				if( errMsg.length() == 0 )
+				{
+					if( replyJson["message"].is_string() )
+					{
+						stringstream ss;
+						ss << "POST request to " << url << " failed with Github error: " << replyJson["message"].string_value();
+						throw runtime_error( ss.str() );
+					}
+					
+					off_t	pos = currIssue.filepath().rfind("/");
+					assert( pos != string::npos );
+					string newPath = currIssue.filepath().substr(0,pos+1);
+					newPath.append( to_string(replyJson["number"].int_value()) );
+					newPath.append(".json");
+					
+					ofstream	newFile(newPath);
+					newFile << replyJson.dump();
+					
+					unlink( currIssue.filepath().c_str() );
+				}
+			}
+			else
+			{
+				stringstream ss;
+				ss << "POST request to " << url << " failed with curl error: " << errcode;
+				throw runtime_error( ss.str() );
 			}
 		}
-		else
+		else if( hash_string(postBody) != hash_string(hashesFile.value_for_key(to_string(currIssue.issue_number()))) )	// Changed locally.
 		{
 			stringstream ss;
-			ss << "POST request to " << url << " failed with curl error: " << errcode;
+			ss << "Issue #" << currIssue.issue_number() << "has been changed locally. Can't yet push changes or merge issues.";
 			throw runtime_error( ss.str() );
 		}
 	} );
