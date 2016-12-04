@@ -168,7 +168,7 @@ string	cached_download( string url, string fname, string userName, string passwo
 }
 
 
-void	download_comments( int bugNumber, string commentsURL, string userName, string password, bool ignoreCache )
+void	download_comments( int bugNumber, string commentsURL, string userName, string password, bool ignoreCache, int *outNextCommentNumber )
 {
 	ifstream		downloadedcommentsjson;
 	stringstream	downloadedcommentsfilename;
@@ -193,13 +193,16 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 			issuecommentfilename << issuecommentfoldername.str() << "/" << currComment["id"].int_value() << ".json";
 			string		fn = issuecommentfilename.str();
 			string		fc = currComment.dump();
+			int	commentNumber = currComment["id"].int_value();
+			if( outNextCommentNumber && (*outNextCommentNumber) <= commentNumber )
+				*outNextCommentNumber = commentNumber +1;
 			
 			if( filesystem::exists(fn) )
 			{
 				ifstream	localFile( fn );
 				string		localJson( file_contents(localFile) );
 				string		fileHash = hash_string( localJson );
-				string		pristineHash = commentHashes.value_for_key(to_string(currComment["id"].int_value()));
+				string		pristineHash = commentHashes.value_for_key(to_string(commentNumber));
 				
 				if( fileHash != pristineHash )
 				{
@@ -211,12 +214,12 @@ void	download_comments( int bugNumber, string commentsURL, string userName, stri
 			
 			ofstream	commentfile(fn);
 			commentfile << fc;
-			commentHashes.set_value_for_key( to_string(currComment["id"].int_value()), hash_string(fc) );
+			commentHashes.set_value_for_key( to_string(commentNumber), hash_string(fc) );
 		}
 	}
 	else
 	{
-		cerr << "Couldn't write comments for bug #" << bugNumber << endl;
+		cerr << "Couldn't write comments for bug #" << bugNumber << ": " << errMsg << endl;
 	}
 }
 
@@ -295,9 +298,21 @@ std::vector<comment_info>	issue_info::comments() const
 }
 
 
-void	issue_info::add_comment( const comment_info& inComment )
+void	issue_info::add_comment( const std::string inBody )
 {
+	filesystem::path	commentFolderPath(filesystem::path(mFilePath).parent_path() / (to_string(issue_number()) + "_comments"));
+
+	Json	commentJson( (map<string,Json>){ { "body", inBody } } );
+	configfile	settingsfile( "cache/bugmatic_state" );
+	int		commentNumber = atoi( settingsfile.value_for_key( "next_comment_number" ).c_str() );
+
+	stringstream	commentfilename;
+	commentfilename << commentFolderPath.string() << "/" << commentNumber << ".pending.json";
+	ofstream		commentfile( commentfilename.str() );
+	string			commentJsonStr( commentJson.dump() );
+	commentfile << commentJsonStr;
 	
+	settingsfile.set_value_for_key( "next_comment_number", to_string(commentNumber +1) );
 }
 
 
@@ -337,6 +352,7 @@ void	working_copy::init()
 	
 	ofstream	settingsfile("cache/bugmatic_state");
 	settingsfile << "next_bug_number:" << 1 << endl;
+	settingsfile << "next_comment_number:" << 1 << endl;
 }
 
 
@@ -365,10 +381,11 @@ void	working_copy::clone( const remote& inRemote )
 	configfile		issueHashes("cache/hashes");
 	
 	int				nextBugNumber = 1;
+	int				nextCommentNumber = 1;
 	stringstream	issuesUrl;
 	issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
 	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-		[inRemote,&nextBugNumber,&issueHashes]( string replyData )
+		[inRemote,&nextBugNumber,&issueHashes,&nextCommentNumber]( string replyData )
 		{
 			string	errMsg;
 			Json	replyJson = Json::parse( replyData, errMsg );
@@ -386,7 +403,7 @@ void	working_copy::clone( const remote& inRemote )
 					
 					if( currItem["comments"].int_value() > 0 )
 					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true );
+						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
 					}
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
@@ -408,7 +425,7 @@ void	working_copy::clone( const remote& inRemote )
 			}
 		} );
 
-	// Write out highest bug number so we don't need to search the database to add a bug:
+	// Write out highest bug number etc. so we don't need to search the database to add a bug:
 	ifstream		settingsfile("cache/bugmatic_state");
 	string			settings = file_contents( settingsfile );
 	off_t			searchPos = 0;
@@ -427,6 +444,11 @@ void	working_copy::clone( const remote& inRemote )
 			newsettings << "next_bug_number:" << nextBugNumber << endl;
 			nextBugNumber = 0;
 		}
+		else if( setting == "next_comment_number" )
+		{
+			newsettings << "next_comment_number:" << nextCommentNumber << endl;
+			nextCommentNumber = 0;
+		}
 		else if( setting == "last_synchronized_date" )
 		{
 			newsettings << "last_synchronized_date:" << currDate << endl;
@@ -443,6 +465,10 @@ void	working_copy::clone( const remote& inRemote )
 	if( nextBugNumber != 0 )
 	{
 		newsettings << "next_bug_number:" << nextBugNumber << endl;
+	}
+	if( nextCommentNumber != 0 )
+	{
+		newsettings << "next_comment_number:" << nextCommentNumber << endl;
 	}
 	if( currDate.length() != 0 )
 	{
@@ -701,11 +727,12 @@ void	working_copy::pull( const remote& inRemote )
 	string currDate( dateStr );
 	
 	int				nextBugNumber = 1;
+	int				nextCommentNumber = 1;
 	stringstream	issuesUrl;
 	issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
 	cout << issuesUrl.str() << endl;
 	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-		[inRemote,&nextBugNumber,&hashesFile]( string replyData )
+		[inRemote,&nextBugNumber,&hashesFile,&nextCommentNumber]( string replyData )
 		{
 			string	errMsg;
 			Json	replyJson = Json::parse( replyData, errMsg );
@@ -723,7 +750,7 @@ void	working_copy::pull( const remote& inRemote )
 					
 					if( currItem["comments"].int_value() > 0 )
 					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true );
+						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
 					}
 					stringstream	issuefilename;
 					issuefilename << "issues/" << bugNumber << ".json";
@@ -780,6 +807,11 @@ void	working_copy::pull( const remote& inRemote )
 			newsettings << "next_bug_number:" << nextBugNumber << endl;
 			nextBugNumber = 0;
 		}
+		else if( setting == "next_comment_number" )
+		{
+			newsettings << "next_comment_number:" << nextCommentNumber << endl;
+			nextCommentNumber = 0;
+		}
 		else if( setting == "last_synchronized_date" )
 		{
 			newsettings << "last_synchronized_date:" << currDate << endl;
@@ -797,6 +829,10 @@ void	working_copy::pull( const remote& inRemote )
 	{
 		newsettings << "next_bug_number:" << nextBugNumber << endl;
 	}
+	if( nextCommentNumber != 0 )
+	{
+		newsettings << "next_comment_number:" << nextCommentNumber << endl;
+	}
 	if( currDate.length() != 0 )
 	{
 		newsettings << "last_synchronized_date:" << currDate << endl;
@@ -804,6 +840,13 @@ void	working_copy::pull( const remote& inRemote )
 	
 	ofstream		statefile( "cache/bugmatic_state" );
 	statefile << newsettings.str();
+}
+
+
+int working_copy::next_comment_number() const
+{
+	configfile	settingsfile( "cache/bugmatic_state" );
+	return atoi( settingsfile.value_for_key( "next_comment_number" ).c_str() );
 }
 
 

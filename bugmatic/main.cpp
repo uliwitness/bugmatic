@@ -28,7 +28,8 @@ void	print_syntax()
 			<< "\tbugmatic push <username> <project> [<projectUsername>] # Create issues on Github for all local-only issues in the current directory's database." << endl
 			<< "\tbugmatic pull <username> <project> [<projectUsername>] # Download issues added on Github since we last cloned or pulled into the current directory's database." << endl
 			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl
-			<< "\tbugmatic issue [<issueNumber>] # Display a given issue (defaults to the last created issue)." << endl;
+			<< "\tbugmatic comment <commentBody> [<issueNumber>] # add a comment to a given issue (defaults to the last created issue)." << endl
+			<< "\tbugmatic show [<issueNumber>] # Display a given issue (defaults to the last created issue)." << endl;
 }
 
 
@@ -205,7 +206,30 @@ int main( int argc, const char * argv[] )
 			
 			cout << "Done." << endl;
 		}
-		else if( operation == "issue" )
+		else if( operation == "comment" )
+		{
+			if( argc < 3 )
+			{
+				print_syntax();
+				return 1;
+			}
+
+			string commentBody = argv[2];
+			working_copy	wc( currDir );
+			int bugNumber = (argc >= 4) ? atoi(argv[3]) : wc.next_bug_number() -1;
+			
+			stringstream criterion;
+			criterion << "number=";
+			criterion << bugNumber;
+			
+			wc.list((std::vector<std::string>) {criterion.str()}, [commentBody](issue_info currIssue)
+			{
+				currIssue.add_comment( commentBody );
+			});
+			
+			cout << "Done." << endl;
+		}
+		else if( operation == "show" )
 		{
 			if( argc < 2 )
 			{

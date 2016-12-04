@@ -86,13 +86,14 @@ public:
 	std::string	html_url() const			{ return mIssueMetadata["html_url"].string_value(); }
 	std::string	url() const					{ return mIssueMetadata["url"].string_value(); }
 	std::string	repository_url() const		{ return mIssueMetadata["repository_url"].string_value(); }
+	std::string	comments_url() const		{ return mIssueMetadata["comments_url"].string_value(); }
 	std::string	state() const				{ return mIssueMetadata["state"].string_value(); }
 
 	std::vector<label_info>	labels() const;
 	void					add_label( std::string inLabelName );
 
 	std::vector<comment_info>	comments() const;
-	void						add_comment( const comment_info& inComment );
+	void						add_comment( const std::string inBody );
 	
 	std::vector<user_info>	assignees() const;
 	user_info				user() const	{ return user_info( mIssueMetadata["user"] ); }
@@ -146,6 +147,7 @@ public:
 	void		pull( const remote& inRemote );
 	
 	int			next_bug_number() const;
+	int			next_comment_number() const;
 	std::string	last_synchronized_date() const;
 
 protected:
