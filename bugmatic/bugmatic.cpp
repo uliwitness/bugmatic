@@ -271,7 +271,14 @@ std::vector<comment_info>	issue_info::comments() const
 	filesystem::directory_iterator	currFile(commentFolderPath);
 	for( ; currFile != filesystem::directory_iterator(); ++currFile )
 	{
-		ifstream	jsonFile( (*currFile).path().string() );
+		filesystem::path	fpath( (*currFile).path() );
+		string				fname( fpath.filename().string() );
+		if( fname.length() > 0 && fname[0] == '.' )
+			continue;
+		if( fname.rfind(".json") != fname.length() -5 )
+			continue;
+
+		ifstream	jsonFile( fpath.string() );
 		string		fileData( file_contents( jsonFile ) );
 		string		errMsg;
 		Json		currItem = Json::parse( fileData, errMsg );
