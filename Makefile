@@ -16,9 +16,10 @@ all: dependencies clean build
 dependencies:
 	git submodule init
 	git submodule update
+	mkdir -p ./products
 
 build:
-	xcrun clang++ -x c++ -std=c++11 -arch x86_64 $(BUGMATIC_SOURCES) $(BUGMATIC_INCLUDES) $(BUGMATIC_LINKER_FLAGS) -o bugmatic
+	xcrun clang++ -x c++ -std=c++11 -arch x86_64 $(BUGMATIC_SOURCES) $(BUGMATIC_INCLUDES) $(BUGMATIC_LINKER_FLAGS) -o products/bugmatic
 
 clean:
-	-rm bugmatic
+	-rm ./products/bugmatic
