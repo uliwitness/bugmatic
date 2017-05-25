@@ -694,6 +694,12 @@ void	working_copy::push( const remote& inRemote )
 					
 					unlink( currIssue.filepath().c_str() );
 				}
+				else
+				{
+					stringstream ss;
+					ss << "POST request to " << url << " failed with JSON error: " << errMsg;
+					throw runtime_error( ss.str() );
+				}
 			}
 			else
 			{
