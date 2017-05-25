@@ -3,7 +3,7 @@
 ## What is it?
 
 Bugmatic is supposed to be a simple offline browser/editor for Github Issues.
-The idea is that just as you can download your Git reporsitory from Github
+The idea is that just as you can download your Git repository from Github
 and fully use it while you are on a plane, you should be able to manage your
 Github Issues.
 
