@@ -75,12 +75,14 @@ protected:
 class issue_info
 {
 public:
-	issue_info( json11::Json inJson, std::string inPath ) : mIssueMetadata(inJson), mFilePath(inPath) {}
+	explicit issue_info( json11::Json inJson = json11::Json(), std::string inPath = "" ) : mIssueMetadata(inJson), mFilePath(inPath) {}
 	issue_info( const issue_info& inOriginal ) : mIssueMetadata(inOriginal.mIssueMetadata), mFilePath(inOriginal.mFilePath) {}
 	
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
+	void		set_title( std::string inTitle )	{ /*mIssueMetadata["title"] = json11::Json(inTitle);*/ }
 	std::string	body() const				{ return mIssueMetadata["body"].string_value(); }
+	void		set_body( std::string inBody )		{ /*mIssueMetadata["body"] = json11::Json(inBody);*/ }
 	std::string	created_at() const			{ return mIssueMetadata["created_at"].string_value(); }
 	std::string	closed_at() const			{ return mIssueMetadata["closed_at"].string_value(); }
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
