@@ -140,7 +140,7 @@ public:
 	explicit working_copy( std::string inWorkingCopyPath = "" ) : mWorkingCopyPath(inWorkingCopyPath) {}
 	
 	void		set_path( std::string inWorkingCopyPath )	{ mWorkingCopyPath = inWorkingCopyPath; }
-	void		path()										{ return mWorkingCopyPath; }
+	std::string	path()										{ return mWorkingCopyPath; }
 	
 	void		init();
 	void		clone( const remote& inRemote );
