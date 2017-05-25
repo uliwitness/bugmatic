@@ -137,7 +137,10 @@ protected:
 class working_copy
 {
 public:
-	explicit working_copy( std::string inWorkingCopyPath ) : mWorkingCopyPath(inWorkingCopyPath) {}
+	explicit working_copy( std::string inWorkingCopyPath = "" ) : mWorkingCopyPath(inWorkingCopyPath) {}
+	
+	void		set_path( std::string inWorkingCopyPath )	{ mWorkingCopyPath = inWorkingCopyPath; }
+	void		path()										{ return mWorkingCopyPath; }
 	
 	void		init();
 	void		clone( const remote& inRemote );
