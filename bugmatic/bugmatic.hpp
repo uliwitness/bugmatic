@@ -76,6 +76,7 @@ class issue_info
 {
 public:
 	issue_info( json11::Json inJson, std::string inPath ) : mIssueMetadata(inJson), mFilePath(inPath) {}
+	issue_info( const issue_info& inOriginal ) : mIssueMetadata(inOriginal.mIssueMetadata), mFilePath(inOriginal.mFilePath) {}
 	
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
@@ -102,6 +103,9 @@ public:
 	
 	std::string	filepath() const			{ return mFilePath; }
 	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" );return pos == mFilePath.length(); }
+	
+	issue_info & operator =( const issue_info& inOriginal ) { mIssueMetadata = inOriginal.mIssueMetadata; mFilePath= inOriginal.mFilePath; return *this; }
+
 	
 protected:
 	json11::Json	issue_json()	{ return mIssueMetadata; }
