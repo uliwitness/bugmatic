@@ -17,6 +17,8 @@
 namespace bugmatic
 {
 
+json11::Json	json_by_replacing_field( const std::string& inName, const json11::Json &inNewValue, const json11::Json &ofValue );
+
 class user_info
 {
 public:
@@ -80,9 +82,9 @@ public:
 	
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
-	void		set_title( std::string inTitle )	{ /*mIssueMetadata["title"] = json11::Json(inTitle);*/ }
+	void		set_title( std::string inTitle )	{ mIssueMetadata = json_by_replacing_field( "title", json11::Json(inTitle), mIssueMetadata ); }
 	std::string	body() const				{ return mIssueMetadata["body"].string_value(); }
-	void		set_body( std::string inBody )		{ /*mIssueMetadata["body"] = json11::Json(inBody);*/ }
+	void		set_body( std::string inBody )		{ mIssueMetadata = json_by_replacing_field( "body", json11::Json(inBody), mIssueMetadata ); }
 	std::string	created_at() const			{ return mIssueMetadata["created_at"].string_value(); }
 	std::string	closed_at() const			{ return mIssueMetadata["closed_at"].string_value(); }
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
@@ -162,7 +164,6 @@ public:
 protected:
 	std::string		mWorkingCopyPath;
 };
-
 
 }
 

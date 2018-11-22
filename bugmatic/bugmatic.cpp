@@ -918,4 +918,11 @@ string	working_copy::last_synchronized_date() const
 }
 
 
-
+Json	bugmatic::json_by_replacing_field( const string& inName, const Json &inNewValue, const Json &ofValue )
+{
+	map<string, Json> newValues = ofValue.object_items();
+	
+	newValues[inName] = inNewValue;
+	
+	return Json( newValues );
+}
