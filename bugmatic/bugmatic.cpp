@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cmath>
 #include <unistd.h>
+#include <uuid/uuid.h>
 #include "json11.hpp"
 #include "url_request.hpp"
 #include "fake_filesystem.hpp"	// until <filesystem> becomes available.
@@ -358,125 +359,132 @@ void	working_copy::init()
 
 void	working_copy::clone( const remote& inRemote )
 {
-	chdir( mWorkingCopyPath.c_str() );
-
-	filesystem::path	wcPath(mWorkingCopyPath);
-	if( filesystem::exists( (wcPath / filesystem::path("issues")).string() )
-		|| filesystem::exists( (wcPath / filesystem::path("milestones")).string() )
-		|| filesystem::exists( (wcPath / filesystem::path("users")).string() )
-		|| filesystem::exists( (wcPath / filesystem::path("cache")).string() ) )
-		throw runtime_error( "Can't clone into folder that already contains an issue database." );
-	
-	mkdir("issues",0777);
-	mkdir("milestones",0777);
-	mkdir("users",0777);
-	mkdir("cache",0777);
-	
-    time_t now;
-    time(&now);
-	char dateStr[64] = {0};
-	strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
-	string currDate( dateStr );
-	
-	configfile		issueHashes("cache/hashes");
-	
-	int				nextBugNumber = 1;
-	int				nextCommentNumber = 1;
-	stringstream	issuesUrl;
-	issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
-	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-		[inRemote,&nextBugNumber,&issueHashes,&nextCommentNumber]( string replyData )
+	{
+		chdir( mWorkingCopyPath.c_str() );
+		
+		filesystem::path	wcPath(mWorkingCopyPath);
+		if( filesystem::exists( (wcPath / filesystem::path("issues")).string() )
+		   || filesystem::exists( (wcPath / filesystem::path("milestones")).string() )
+		   || filesystem::exists( (wcPath / filesystem::path("users")).string() )
+		   || filesystem::exists( (wcPath / filesystem::path("cache")).string() ) )
+			throw runtime_error( "Can't clone into folder that already contains an issue database." );
+		
+		mkdir("issues",0777);
+		mkdir("milestones",0777);
+		mkdir("users",0777);
+		mkdir("cache",0777);
+		
+		time_t now;
+		time(&now);
+		char dateStr[64] = {0};
+		strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
+		string currDate( dateStr );
+		
+		configfile		issueHashes("cache/hashes");
+		
+		int				nextBugNumber = 1;
+		int				nextCommentNumber = 1;
+		stringstream	issuesUrl;
+		issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
+		paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
+							  [inRemote,&nextBugNumber,&issueHashes,&nextCommentNumber]( string replyData )
+							  {
+								  string	errMsg;
+								  Json	replyJson = Json::parse( replyData, errMsg );
+								  if( errMsg.length() == 0 )
+								  {
+									  for( const Json& currItem : replyJson.array_items() )
+									  {
+										  int	bugNumber = currItem["number"].int_value();
+										  cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+										  for( const Json& currLabel : currItem["labels"].array_items() )
+										  {
+											  cout << " [" << currLabel["name"].string_value() << "]";
+										  }
+										  cout << endl;
+										  
+										  if( currItem["comments"].int_value() > 0 )
+										  {
+											  download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
+										  }
+										  stringstream	issuefilename;
+										  issuefilename << "issues/" << bugNumber << ".json";
+										  ofstream		issuefile( issuefilename.str() );
+										  string			issueJsonStr( currItem.dump() );
+										  issuefile << issueJsonStr;
+										  
+										  issueHashes.set_value_for_key( to_string(bugNumber), hash_string( issueJsonStr ) );
+										  
+										  if( bugNumber >= nextBugNumber )
+											  nextBugNumber = bugNumber +1;
+									  }
+								  }
+								  else
+								  {
+									  stringstream ss("JSON parser failed: ");
+									  ss << errMsg;
+									  throw runtime_error(ss.str());
+								  }
+							  } );
+		
+		// Write out highest bug number etc. so we don't need to search the database to add a bug:
+		ifstream		settingsfile("cache/bugmatic_state");
+		string			settings = file_contents( settingsfile );
+		off_t			searchPos = 0;
+		size_t			strLen = settings.length();
+		stringstream	newsettings;
+		while( true )
 		{
-			string	errMsg;
-			Json	replyJson = Json::parse( replyData, errMsg );
-			if( errMsg.length() == 0 )
+			off_t pos = settings.find('\n', searchPos);
+			if( pos == string::npos )
+				pos = strLen;
+			string currline = settings.substr( searchPos, pos -searchPos );
+			string	setting = url_reply::header_name( currline );
+			
+			if( setting == "next_bug_number" )
 			{
-				for( const Json& currItem : replyJson.array_items() )
-				{
-					int	bugNumber = currItem["number"].int_value();
-					cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-					for( const Json& currLabel : currItem["labels"].array_items() )
-					{
-						cout << " [" << currLabel["name"].string_value() << "]";
-					}
-					cout << endl;
-					
-					if( currItem["comments"].int_value() > 0 )
-					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
-					}
-					stringstream	issuefilename;
-					issuefilename << "issues/" << bugNumber << ".json";
-					ofstream		issuefile( issuefilename.str() );
-					string			issueJsonStr( currItem.dump() );
-					issuefile << issueJsonStr;
-					
-					issueHashes.set_value_for_key( to_string(bugNumber), hash_string( issueJsonStr ) );
-					
-					if( bugNumber >= nextBugNumber )
-						nextBugNumber = bugNumber +1;
-				}
+				newsettings << "next_bug_number:" << nextBugNumber << endl;
+				nextBugNumber = 0;
+			}
+			else if( setting == "next_comment_number" )
+			{
+				newsettings << "next_comment_number:" << nextCommentNumber << endl;
+				nextCommentNumber = 0;
+			}
+			else if( setting == "last_synchronized_date" )
+			{
+				newsettings << "last_synchronized_date:" << currDate << endl;
+				currDate = "";
 			}
 			else
-			{
-				stringstream ss("JSON parser failed: ");
-				ss << errMsg;
-				throw runtime_error(ss.str());
-			}
-		} );
-
-	// Write out highest bug number etc. so we don't need to search the database to add a bug:
-	ifstream		settingsfile("cache/bugmatic_state");
-	string			settings = file_contents( settingsfile );
-	off_t			searchPos = 0;
-	size_t			strLen = settings.length();
-	stringstream	newsettings;
-	while( true )
-	{
-		off_t pos = settings.find('\n', searchPos);
-		if( pos == string::npos )
-			pos = strLen;
-		string currline = settings.substr( searchPos, pos -searchPos );
-		string	setting = url_reply::header_name( currline );
+				newsettings << currline << endl;
+			
+			if( pos >= strLen )
+				break;
+			searchPos = pos +1;
+		}
 		
-		if( setting == "next_bug_number" )
+		if( nextBugNumber != 0 )
 		{
 			newsettings << "next_bug_number:" << nextBugNumber << endl;
-			nextBugNumber = 0;
 		}
-		else if( setting == "next_comment_number" )
+		if( nextCommentNumber != 0 )
 		{
 			newsettings << "next_comment_number:" << nextCommentNumber << endl;
-			nextCommentNumber = 0;
 		}
-		else if( setting == "last_synchronized_date" )
+		if( currDate.length() != 0 )
 		{
 			newsettings << "last_synchronized_date:" << currDate << endl;
-			currDate = "";
 		}
-		else
-			newsettings << currline << endl;
 		
-		if( pos >= strLen )
-			break;
-		searchPos = pos +1;
+		ofstream		statefile( "cache/bugmatic_state" );
+		statefile << newsettings.str();
 	}
 	
-	if( nextBugNumber != 0 )
+	if( mChangeHandler )
 	{
-		newsettings << "next_bug_number:" << nextBugNumber << endl;
+		mChangeHandler( *this );
 	}
-	if( nextCommentNumber != 0 )
-	{
-		newsettings << "next_comment_number:" << nextCommentNumber << endl;
-	}
-	if( currDate.length() != 0 )
-	{
-		newsettings << "last_synchronized_date:" << currDate << endl;
-	}
-	
-	ofstream		statefile( "cache/bugmatic_state" );
-	statefile << newsettings.str();
 }
 
 
@@ -595,46 +603,61 @@ void	working_copy::list( std::vector<std::string> inWhereClauses, std::function<
 
 int	working_copy::new_issue( std::string inTitle, std::string inBody )
 {
-	filesystem::path	wcPath(mWorkingCopyPath);
-	filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
-	ifstream			settingsfile( settingsPath.string() );
-	string				settings = file_contents( settingsfile );
-	off_t				searchPos = 0;
-	size_t				strLen = settings.length();
 	int					bugNumber = 1;
-	stringstream		newsettings;
-	while( true )
+	
 	{
-		off_t pos = settings.find('\n', searchPos);
-		if( pos == string::npos )
-			pos = strLen;
-		string currline = settings.substr( searchPos, pos -searchPos );
-		std::pair<string,string>	setting = url_reply::header_name_and_value( currline );
-		
-		if( setting.first == "next_bug_number" )
+		filesystem::path	wcPath(mWorkingCopyPath);
+		filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
+		ifstream			settingsfile( settingsPath.string() );
+		string				settings = file_contents( settingsfile );
+		off_t				searchPos = 0;
+		size_t				strLen = settings.length();
+		stringstream		newsettings;
+		while( true )
 		{
-			bugNumber = atoi( setting.second.c_str() );
-			newsettings << "next_bug_number:" << (bugNumber +1) << endl;
-		}
-		else
-		{
-			newsettings << currline << endl;
+			off_t pos = settings.find('\n', searchPos);
+			if( pos == string::npos )
+				pos = strLen;
+			string currline = settings.substr( searchPos, pos -searchPos );
+			std::pair<string,string>	setting = url_reply::header_name_and_value( currline );
+			
+			if( setting.first == "next_bug_number" )
+			{
+				bugNumber = atoi( setting.second.c_str() );
+				newsettings << "next_bug_number:" << (bugNumber +1) << endl;
+			}
+			else
+			{
+				newsettings << currline << endl;
+			}
+			
+			if( pos >= strLen )
+				break;
+			searchPos = pos +1;
 		}
 		
-		if( pos >= strLen )
-			break;
-		searchPos = pos +1;
+		uuid_t			uuid;
+		uuid_generate(uuid);
+		
+		uuid_string_t	uuidstring;
+		uuid_unparse(uuid, uuidstring);
+		
+		string			uuidCppString( uuidstring );
+		Json			currItem = Json( (map<string,Json>){ { "body", inBody }, { "number", bugNumber }, { "title", inTitle }, { "uuid", uuidCppString } } );
+		stringstream	issuefilename;
+		issuefilename << "issues/" << bugNumber << ".pending.json";
+		ofstream		issuefile( (wcPath / filesystem::path(issuefilename.str())).string() );
+		issuefile << currItem.dump();
+		
+		ofstream		statefile( (wcPath / "cache/bugmatic_state").string() );
+		statefile << newsettings.str();
 	}
 	
-	Json			currItem = Json( (map<string,Json>){ { "body", inBody }, { "number", bugNumber }, { "title", inTitle } } );
-	stringstream	issuefilename;
-	issuefilename << "issues/" << bugNumber << ".pending.json";
-	ofstream		issuefile( (wcPath / filesystem::path(issuefilename.str())).string() );
-	issuefile << currItem.dump();
-	
-	ofstream		statefile( (wcPath / "cache/bugmatic_state").string() );
-	statefile << newsettings.str();
-	
+	if( mChangeHandler )
+	{
+		mChangeHandler( *this );
+	}
+
 	return bugNumber;
 }
 
@@ -643,7 +666,7 @@ void	working_copy::push( const remote& inRemote )
 {
 	configfile	hashesFile( "cache/hashes" );
 
-	list( std::vector<std::string>(), [inRemote,&hashesFile]( issue_info currIssue )
+	list( std::vector<std::string>(), [inRemote,&hashesFile,this]( issue_info currIssue )
 	{
 		string url( inRemote.url() );
 		url.append("/issues");
@@ -683,16 +706,23 @@ void	working_copy::push( const remote& inRemote )
 						throw runtime_error( ss.str() );
 					}
 					
-					off_t	pos = currIssue.filepath().rfind("/");
-					assert( pos != string::npos );
-					string newPath = currIssue.filepath().substr(0,pos+1);
-					newPath.append( to_string(replyJson["number"].int_value()) );
-					newPath.append(".json");
-					
-					ofstream	newFile(newPath);
-					newFile << replyJson.dump();
-					
-					unlink( currIssue.filepath().c_str() );
+					{
+						off_t	pos = currIssue.filepath().rfind("/");
+						assert( pos != string::npos );
+						string newPath = currIssue.filepath().substr(0,pos+1);
+						newPath.append( to_string(replyJson["number"].int_value()) );
+						newPath.append(".json");
+						
+						ofstream	newFile(newPath);
+						newFile << replyJson.dump();
+						
+						unlink( currIssue.filepath().c_str() );
+					}
+
+					if( mChangeHandler )
+					{
+						mChangeHandler( *this );
+					}
 				}
 				else
 				{
@@ -721,131 +751,138 @@ void	working_copy::push( const remote& inRemote )
 void	working_copy::pull( const remote& inRemote )
 {
 	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
-	
-	configfile	hashesFile( "cache/hashes" );
-	
-	chdir( mWorkingCopyPath.c_str() );
+	{
+		
+		configfile	hashesFile( "cache/hashes" );
+		
+		chdir( mWorkingCopyPath.c_str() );
 
-    time_t now;
-    time(&now);
-	char dateStr[64] = {0};
-	strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
-	string currDate( dateStr );
-	
-	int				nextBugNumber = 1;
-	int				nextCommentNumber = 1;
-	stringstream	issuesUrl;
-	issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
-	cout << issuesUrl.str() << endl;
-	paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-		[inRemote,&nextBugNumber,&hashesFile,&nextCommentNumber]( string replyData )
-		{
-			string	errMsg;
-			Json	replyJson = Json::parse( replyData, errMsg );
-			if( errMsg.length() == 0 )
+		time_t now;
+		time(&now);
+		char dateStr[64] = {0};
+		strftime( dateStr, sizeof(dateStr), "%FT%TZ", gmtime(&now) );
+		string currDate( dateStr );
+		
+		int				nextBugNumber = 1;
+		int				nextCommentNumber = 1;
+		stringstream	issuesUrl;
+		issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
+		cout << issuesUrl.str() << endl;
+		paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
+			[inRemote,&nextBugNumber,&hashesFile,&nextCommentNumber]( string replyData )
 			{
-				for( const Json& currItem : replyJson.array_items() )
+				string	errMsg;
+				Json	replyJson = Json::parse( replyData, errMsg );
+				if( errMsg.length() == 0 )
 				{
-					int	bugNumber = currItem["number"].int_value();
-					cout << "#" << bugNumber << ": " << currItem["title"].string_value();
-					for( const Json& currLabel : currItem["labels"].array_items() )
+					for( const Json& currItem : replyJson.array_items() )
 					{
-						cout << " [" << currLabel["name"].string_value() << "]";
-					}
-					cout << endl;
-					
-					if( currItem["comments"].int_value() > 0 )
-					{
-						download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
-					}
-					stringstream	issuefilename;
-					issuefilename << "issues/" << bugNumber << ".json";
-					
-					// Already have a file of this name?
-					if( filesystem::exists(filesystem::path(issuefilename.str())) )
-					{
-						ifstream	issueFileIn(issuefilename.str());
-						string issueJsonStr = file_contents(issueFileIn);
-						string fileHash = hash_string( issueJsonStr );
-						string pristineHash = hashesFile.value_for_key(to_string(bugNumber));
-						if( pristineHash != fileHash )
+						int	bugNumber = currItem["number"].int_value();
+						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
+						for( const Json& currLabel : currItem["labels"].array_items() )
 						{
-							stringstream errMsg;
-							errMsg << "Can't pull issue #" << bugNumber << " because the changes to it would be overwritten.";
-							throw runtime_error(errMsg.str());
+							cout << " [" << currLabel["name"].string_value() << "]";
 						}
+						cout << endl;
+						
+						if( currItem["comments"].int_value() > 0 )
+						{
+							download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
+						}
+						stringstream	issuefilename;
+						issuefilename << "issues/" << bugNumber << ".json";
+						
+						// Already have a file of this name?
+						if( filesystem::exists(filesystem::path(issuefilename.str())) )
+						{
+							ifstream	issueFileIn(issuefilename.str());
+							string issueJsonStr = file_contents(issueFileIn);
+							string fileHash = hash_string( issueJsonStr );
+							string pristineHash = hashesFile.value_for_key(to_string(bugNumber));
+							if( pristineHash != fileHash )
+							{
+								stringstream errMsg;
+								errMsg << "Can't pull issue #" << bugNumber << " because the changes to it would be overwritten.";
+								throw runtime_error(errMsg.str());
+							}
+						}
+						
+						ofstream		issuefile( issuefilename.str() );
+						string			issueJsonStr( currItem.dump() );
+						issuefile << issueJsonStr;
+						
+						hashesFile.set_value_for_key(to_string(bugNumber), hash_string(issueJsonStr));
+						
+						if( bugNumber >= nextBugNumber )
+							nextBugNumber = bugNumber +1;
 					}
-					
-					ofstream		issuefile( issuefilename.str() );
-					string			issueJsonStr( currItem.dump() );
-					issuefile << issueJsonStr;
-					
-					hashesFile.set_value_for_key(to_string(bugNumber), hash_string(issueJsonStr));
-					
-					if( bugNumber >= nextBugNumber )
-						nextBugNumber = bugNumber +1;
 				}
+				else
+				{
+					stringstream ss("JSON parser failed: ");
+					ss << errMsg;
+					throw runtime_error(ss.str());
+				}
+			} );
+		
+		// Write out highest bug number so we don't need to search the database to add a bug:
+		ifstream		settingsfile("cache/bugmatic_state");
+		string			settings = file_contents( settingsfile );
+		off_t			searchPos = 0;
+		size_t			strLen = settings.length();
+		stringstream	newsettings;
+		while( true )
+		{
+			off_t pos = settings.find('\n', searchPos);
+			if( pos == string::npos )
+				pos = strLen;
+			string currline = settings.substr( searchPos, pos -searchPos );
+			string	setting = url_reply::header_name( currline );
+			
+			if( setting == "next_bug_number" )
+			{
+				newsettings << "next_bug_number:" << nextBugNumber << endl;
+				nextBugNumber = 0;
+			}
+			else if( setting == "next_comment_number" )
+			{
+				newsettings << "next_comment_number:" << nextCommentNumber << endl;
+				nextCommentNumber = 0;
+			}
+			else if( setting == "last_synchronized_date" )
+			{
+				newsettings << "last_synchronized_date:" << currDate << endl;
+				currDate = "";
 			}
 			else
-			{
-				stringstream ss("JSON parser failed: ");
-				ss << errMsg;
-				throw runtime_error(ss.str());
-			}
-		} );
-	
-	// Write out highest bug number so we don't need to search the database to add a bug:
-	ifstream		settingsfile("cache/bugmatic_state");
-	string			settings = file_contents( settingsfile );
-	off_t			searchPos = 0;
-	size_t			strLen = settings.length();
-	stringstream	newsettings;
-	while( true )
-	{
-		off_t pos = settings.find('\n', searchPos);
-		if( pos == string::npos )
-			pos = strLen;
-		string currline = settings.substr( searchPos, pos -searchPos );
-		string	setting = url_reply::header_name( currline );
+				newsettings << currline << endl;
+			
+			if( pos >= strLen )
+				break;
+			searchPos = pos +1;
+		}
 		
-		if( setting == "next_bug_number" )
+		if( nextBugNumber != 0 )
 		{
 			newsettings << "next_bug_number:" << nextBugNumber << endl;
-			nextBugNumber = 0;
 		}
-		else if( setting == "next_comment_number" )
+		if( nextCommentNumber != 0 )
 		{
 			newsettings << "next_comment_number:" << nextCommentNumber << endl;
-			nextCommentNumber = 0;
 		}
-		else if( setting == "last_synchronized_date" )
+		if( currDate.length() != 0 )
 		{
 			newsettings << "last_synchronized_date:" << currDate << endl;
-			currDate = "";
 		}
-		else
-			newsettings << currline << endl;
 		
-		if( pos >= strLen )
-			break;
-		searchPos = pos +1;
+		ofstream		statefile( "cache/bugmatic_state" );
+		statefile << newsettings.str();
 	}
-	
-	if( nextBugNumber != 0 )
+
+	if( mChangeHandler )
 	{
-		newsettings << "next_bug_number:" << nextBugNumber << endl;
+		mChangeHandler( *this );
 	}
-	if( nextCommentNumber != 0 )
-	{
-		newsettings << "next_comment_number:" << nextCommentNumber << endl;
-	}
-	if( currDate.length() != 0 )
-	{
-		newsettings << "last_synchronized_date:" << currDate << endl;
-	}
-	
-	ofstream		statefile( "cache/bugmatic_state" );
-	statefile << newsettings.str();
 }
 
 

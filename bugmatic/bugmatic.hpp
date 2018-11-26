@@ -90,6 +90,8 @@ public:
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
 	std::string	html_url() const			{ return mIssueMetadata["html_url"].string_value(); }
 	std::string	url() const					{ return mIssueMetadata["url"].string_value(); }
+	std::string	uuid() const				{ return mIssueMetadata["uuid"].string_value(); }
+	void		set_uuid( std::string inUUID )	{ mIssueMetadata = json_by_replacing_field( "uuid", json11::Json(inUUID), mIssueMetadata ); }
 	std::string	repository_url() const		{ return mIssueMetadata["repository_url"].string_value(); }
 	std::string	comments_url() const		{ return mIssueMetadata["comments_url"].string_value(); }
 	std::string	state() const				{ return mIssueMetadata["state"].string_value(); }
@@ -160,9 +162,12 @@ public:
 	int			next_bug_number() const;
 	int			next_comment_number() const;
 	std::string	last_synchronized_date() const;
+	
+	void		set_change_handler( std::function<void(working_copy&)> inHandler ) { mChangeHandler = inHandler; }
 
 protected:
 	std::string		mWorkingCopyPath;
+	std::function<void(working_copy&)> mChangeHandler;
 };
 
 }
