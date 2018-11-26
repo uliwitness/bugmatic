@@ -17,7 +17,8 @@
 namespace bugmatic
 {
 
-json11::Json	json_by_replacing_field( const std::string& inName, const json11::Json &inNewValue, const json11::Json &ofValue );
+void	replace_json_field( const std::string& inName, const json11::Json &inNewValue, json11::Json &ofValue );
+void	delete_json_field( const std::string& inName, json11::Json &ofValue );
 
 class user_info
 {
@@ -82,16 +83,16 @@ public:
 	
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
-	void		set_title( std::string inTitle )	{ mIssueMetadata = json_by_replacing_field( "title", json11::Json(inTitle), mIssueMetadata ); }
+	void		set_title( std::string inTitle )	{ replace_json_field( "title", json11::Json(inTitle), mIssueMetadata ); }
 	std::string	body() const				{ return mIssueMetadata["body"].string_value(); }
-	void		set_body( std::string inBody )		{ mIssueMetadata = json_by_replacing_field( "body", json11::Json(inBody), mIssueMetadata ); }
+	void		set_body( std::string inBody )		{ replace_json_field( "body", json11::Json(inBody), mIssueMetadata ); }
 	std::string	created_at() const			{ return mIssueMetadata["created_at"].string_value(); }
 	std::string	closed_at() const			{ return mIssueMetadata["closed_at"].string_value(); }
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
 	std::string	html_url() const			{ return mIssueMetadata["html_url"].string_value(); }
 	std::string	url() const					{ return mIssueMetadata["url"].string_value(); }
 	std::string	uuid() const				{ return mIssueMetadata["uuid"].string_value(); }
-	void		set_uuid( std::string inUUID )	{ mIssueMetadata = json_by_replacing_field( "uuid", json11::Json(inUUID), mIssueMetadata ); }
+	void		set_uuid( std::string inUUID )	{ replace_json_field( "uuid", json11::Json(inUUID), mIssueMetadata ); }
 	std::string	repository_url() const		{ return mIssueMetadata["repository_url"].string_value(); }
 	std::string	comments_url() const		{ return mIssueMetadata["comments_url"].string_value(); }
 	std::string	state() const				{ return mIssueMetadata["state"].string_value(); }
@@ -166,6 +167,9 @@ public:
 	void		set_change_handler( std::function<void(working_copy&)> inHandler ) { mChangeHandler = inHandler; }
 
 protected:
+	void		filter_issue_body_from_github( json11::Json &replyJson );
+	void		filter_issue_body_for_github( json11::Json &replyJson );
+
 	std::string		mWorkingCopyPath;
 	std::function<void(working_copy&)> mChangeHandler;
 };

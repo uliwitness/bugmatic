@@ -387,13 +387,13 @@ void	working_copy::clone( const remote& inRemote )
 		stringstream	issuesUrl;
 		issuesUrl << inRemote.url() << "/issues?state=all&sort=created&direction=asc";
 		paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-							  [inRemote,&nextBugNumber,&issueHashes,&nextCommentNumber]( string replyData )
+							  [inRemote,&nextBugNumber,&issueHashes,&nextCommentNumber,this]( string replyData )
 							  {
 								  string	errMsg;
 								  Json	replyJson = Json::parse( replyData, errMsg );
 								  if( errMsg.length() == 0 )
 								  {
-									  for( const Json& currItem : replyJson.array_items() )
+									  for( Json currItem : replyJson.array_items() )
 									  {
 										  int	bugNumber = currItem["number"].int_value();
 										  cout << "#" << bugNumber << ": " << currItem["title"].string_value();
@@ -403,6 +403,8 @@ void	working_copy::clone( const remote& inRemote )
 										  }
 										  cout << endl;
 										  
+										  filter_issue_body_from_github( currItem );
+
 										  if( currItem["comments"].int_value() > 0 )
 										  {
 											  download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
@@ -672,6 +674,7 @@ void	working_copy::push( const remote& inRemote )
 		url.append("/issues");
 
 		Json	postBodyJson = currIssue.issue_json();
+		filter_issue_body_for_github( postBodyJson );
 		string	postBody = postBodyJson.dump();
 		
 		if( currIssue.url() == "" )	// New, not yet on Github.
@@ -748,6 +751,67 @@ void	working_copy::push( const remote& inRemote )
 }
 
 
+void	working_copy::filter_issue_body_for_github( Json &replyJson )
+{
+	if( !replyJson["uuid"].is_null() )
+	{
+		string issueBody = replyJson["body"].string_value();
+		const char* uuidLabel = "Bugmatic-UUID:";
+		size_t uuidLabelOffset = issueBody.find(uuidLabel);
+		if( uuidLabelOffset != string::npos )
+		{
+			size_t uuidLabelEnd = uuidLabelOffset + strlen(uuidLabel);
+			uuidLabelEnd = issueBody.find_first_not_of(" \t\r\n", uuidLabelEnd);
+			if( uuidLabelEnd == string::npos )
+			{
+				return;
+			}
+			size_t uuidEnd = issueBody.find_first_of( " \t\r\n", uuidLabelOffset );
+			if( uuidEnd == string::npos )
+			{
+				uuidEnd = issueBody.length();
+			}
+			issueBody.replace( uuidLabelEnd, uuidEnd - uuidLabelEnd, replyJson["uuid"].string_value() );
+			replace_json_field("body", issueBody, replyJson);
+		}
+		else
+		{
+			issueBody.append("\n\n");
+			issueBody.append(uuidLabel);
+			issueBody.append(" ");
+			issueBody.append(replyJson["uuid"].string_value());
+			replace_json_field("body", issueBody, replyJson);
+		}
+		
+		delete_json_field("uuid", replyJson);
+	}
+}
+
+
+void	working_copy::filter_issue_body_from_github( Json &replyJson )
+{
+	string issueBody = replyJson["body"].string_value();
+	const char* uuidLabel = "Bugmatic-UUID:";
+	size_t uuidLabelOffset = issueBody.find(uuidLabel);
+	if( uuidLabelOffset != string::npos )
+	{
+		size_t uuidLabelEnd = uuidLabelOffset + strlen(uuidLabel);
+		uuidLabelEnd = issueBody.find_first_not_of(" \t\r\n", uuidLabelEnd);
+		if( uuidLabelEnd == string::npos )
+		{
+			return;
+		}
+		size_t uuidEnd = issueBody.find_first_of( " \t\r\n", uuidLabelOffset );
+		if( uuidEnd == string::npos )
+		{
+			uuidEnd = issueBody.length();
+		}
+		string uuid = issueBody.substr( uuidLabelEnd, uuidEnd - uuidLabelEnd );
+		replace_json_field("uuid", uuid, replyJson);
+	}
+}
+
+
 void	working_copy::pull( const remote& inRemote )
 {
 	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
@@ -769,13 +833,13 @@ void	working_copy::pull( const remote& inRemote )
 		issuesUrl << inRemote.url() << "/issues?state=all&sort=updated&since=" << last_synchronized_date() << "&direction=asc";
 		cout << issuesUrl.str() << endl;
 		paged_cached_download( issuesUrl.str(), "cache/issues.json", inRemote.user_name(), inRemote.password(), true,
-			[inRemote,&nextBugNumber,&hashesFile,&nextCommentNumber]( string replyData )
+			[inRemote,&nextBugNumber,&hashesFile,&nextCommentNumber,this]( string replyData )
 			{
 				string	errMsg;
 				Json	replyJson = Json::parse( replyData, errMsg );
 				if( errMsg.length() == 0 )
 				{
-					for( const Json& currItem : replyJson.array_items() )
+					for( Json currItem : replyJson.array_items() )
 					{
 						int	bugNumber = currItem["number"].int_value();
 						cout << "#" << bugNumber << ": " << currItem["title"].string_value();
@@ -785,6 +849,8 @@ void	working_copy::pull( const remote& inRemote )
 						}
 						cout << endl;
 						
+						filter_issue_body_from_github( currItem );
+
 						if( currItem["comments"].int_value() > 0 )
 						{
 							download_comments( bugNumber, currItem["comments_url"].string_value(), inRemote.user_name(), inRemote.password(), true, &nextCommentNumber );
@@ -955,11 +1021,21 @@ string	working_copy::last_synchronized_date() const
 }
 
 
-Json	bugmatic::json_by_replacing_field( const string& inName, const Json &inNewValue, const Json &ofValue )
+void	bugmatic::replace_json_field( const string& inName, const Json &inNewValue, Json &ofValue )
 {
 	map<string, Json> newValues = ofValue.object_items();
 	
 	newValues[inName] = inNewValue;
 	
-	return Json( newValues );
+	ofValue = Json( newValues );
+}
+
+
+void	bugmatic::delete_json_field( const string& inName, Json &ofValue )
+{
+	map<string, Json> newValues = ofValue.object_items();
+	
+	newValues.erase(inName);
+	
+	ofValue = Json( newValues );
 }
