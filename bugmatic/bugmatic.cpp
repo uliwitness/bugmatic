@@ -666,7 +666,9 @@ int	working_copy::new_issue( std::string inTitle, std::string inBody )
 
 void	working_copy::push( const remote& inRemote )
 {
-	configfile	hashesFile( "cache/hashes" );
+	filesystem::path	wcPath(mWorkingCopyPath);
+	filesystem::path	settingsPath( wcPath / "cache/hashes" );
+	configfile			hashesFile( settingsPath.string() );
 
 	list( std::vector<std::string>(), [inRemote,&hashesFile,this]( issue_info currIssue )
 	{
@@ -674,14 +676,18 @@ void	working_copy::push( const remote& inRemote )
 		url.append("/issues");
 
 		Json	postBodyJson = currIssue.issue_json();
-		filter_issue_body_for_github( postBodyJson );
 		string	postBody = postBodyJson.dump();
+		string	postHashStr = hash_string(postBody);
+		string	hashesFileEntry = hashesFile.value_for_key(to_string(currIssue.issue_number()));
 		
 		if( currIssue.url() == "" )	// New, not yet on Github.
 		{
 			url_request	request;
 			url_reply	reply;
-			
+
+			filter_issue_body_for_github( postBodyJson );
+			string	postBody = postBodyJson.dump();
+
 			request.add_header( "User-Agent: " USER_AGENT );
 			request.add_header( "Content-Type: text/json" );
 			request.set_user_name( inRemote.user_name() );
@@ -741,7 +747,7 @@ void	working_copy::push( const remote& inRemote )
 				throw runtime_error( ss.str() );
 			}
 		}
-		else if( hash_string(postBody) != hash_string(hashesFile.value_for_key(to_string(currIssue.issue_number()))) )	// Changed locally.
+		else if( postHashStr != hashesFileEntry )	// Changed locally.
 		{
 			stringstream ss;
 			ss << "Issue #" << currIssue.issue_number() << " has been changed locally. Can't yet push changes or merge issues.";
@@ -817,7 +823,9 @@ void	working_copy::pull( const remote& inRemote )
 	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
 	{
 		
-		configfile	hashesFile( "cache/hashes" );
+		filesystem::path	wcPath(mWorkingCopyPath);
+		filesystem::path	settingsPath( wcPath / "cache/hashes" );
+		configfile			hashesFile( settingsPath.string() );
 		
 		chdir( mWorkingCopyPath.c_str() );
 
@@ -954,7 +962,9 @@ void	working_copy::pull( const remote& inRemote )
 
 int working_copy::next_comment_number() const
 {
-	configfile	settingsfile( "cache/bugmatic_state" );
+	filesystem::path	wcPath(mWorkingCopyPath);
+	filesystem::path	settingsPath( wcPath / "cache/bugmatic_state" );
+	configfile			settingsfile( settingsPath.string() );
 	return atoi( settingsfile.value_for_key( "next_comment_number" ).c_str() );
 }
 
