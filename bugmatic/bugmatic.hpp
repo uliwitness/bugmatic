@@ -70,6 +70,8 @@ public:
 
 	int			comment_id() const			{ return mCommentMetadata["id"].int_value(); }
 	
+	json11::Json	comment_json()			{ return mCommentMetadata; }
+	
 protected:
 	json11::Json	mCommentMetadata;
 };
@@ -170,6 +172,8 @@ protected:
 	void		filter_issue_body_from_github( json11::Json &replyJson );
 	void		filter_issue_body_for_github( json11::Json &replyJson );
 
+	void		push_comment( const remote& inRemote, issue_info& currIssue, comment_info& currComment );
+	
 	std::string		mWorkingCopyPath;
 	std::function<void(working_copy&)> mChangeHandler;
 };

@@ -763,7 +763,63 @@ void	working_copy::push( const remote& inRemote )
 			ss << "Issue #" << currIssue.issue_number() << " has been changed locally. Can't yet push changes or merge issues.";
 			throw runtime_error( ss.str() );
 		}
+		
+		for( comment_info& currComment : currIssue.comments() )
+		{
+			push_comment(inRemote, currIssue, currComment);
+		}
 	} );
+}
+
+
+void	working_copy::push_comment( const remote& inRemote, issue_info& currIssue, comment_info& currComment )
+{
+	url_request	request;
+	url_reply	reply;
+	
+	Json	postBodyJson = currComment.comment_json();
+	string	postBody = postBodyJson.dump();
+	
+	string url = currComment.url();
+	if( url.length() == 0 )
+	{
+		url = currIssue.comments_url();
+	}
+
+	request.add_header( "User-Agent: " USER_AGENT );
+	request.add_header( "Content-Type: text/json" );
+	request.set_user_name( inRemote.user_name() );
+	request.set_password( inRemote.password() );
+	request.set_post_body( postBody );
+	
+	CURLcode	errcode = request.load( url, reply );
+	if( errcode == CURLE_OK )
+	{
+		if( reply.status() < 200 || reply.status() >= 300 )
+		{
+			stringstream ss;
+			ss << "POST request to " << url << " failed with HTTP error: " << reply.status();
+			throw runtime_error( ss.str() );
+		}
+		
+		string	errMsg;
+		Json	replyJson = Json::parse( reply.data(), errMsg );
+		if( errMsg.length() == 0 )
+		{
+			if( replyJson["message"].is_string() )
+			{
+				stringstream ss;
+				ss << "POST request to " << url << " failed with Github error: " << replyJson["message"].string_value();
+				throw runtime_error( ss.str() );
+			}
+		}
+	}
+	else
+	{
+		stringstream ss;
+		ss << "POST request to " << url << " failed with curl error: " << errcode;
+		throw runtime_error( ss.str() );
+	}
 }
 
 
