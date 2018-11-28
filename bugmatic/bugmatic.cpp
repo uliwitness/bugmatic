@@ -302,6 +302,7 @@ std::vector<comment_info>	issue_info::comments() const
 void	issue_info::add_comment( const std::string inBody )
 {
 	filesystem::path	commentFolderPath(filesystem::path(mFilePath).parent_path() / (to_string(issue_number()) + "_comments"));
+	mkdir(commentFolderPath.string().c_str(), 0777);
 
 	Json	commentJson( (map<string,Json>){ { "body", inBody } } );
 	configfile	settingsfile( "cache/bugmatic_state" );
