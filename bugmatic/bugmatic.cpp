@@ -679,6 +679,7 @@ void	working_copy::push( const remote& inRemote )
 		string	postBody = postBodyJson.dump();
 		string	postHashStr = hash_string(postBody);
 		string	hashesFileEntry = hashesFile.value_for_key(to_string(currIssue.issue_number()));
+		int		bugNumber = currIssue.issue_number();
 		
 		if( currIssue.url() == "" )	// New, not yet on Github.
 		{
@@ -718,13 +719,21 @@ void	working_copy::push( const remote& inRemote )
 					{
 						off_t	pos = currIssue.filepath().rfind("/");
 						assert( pos != string::npos );
-						string newPath = currIssue.filepath().substr(0,pos+1);
+						string newPath = currIssue.filepath().substr(0, pos+1);
 						newPath.append( to_string(replyJson["number"].int_value()) );
 						newPath.append(".json");
 						
+						filter_issue_body_from_github( replyJson );
+
+						postBody = replyJson.dump();
 						ofstream	newFile(newPath);
-						newFile << replyJson.dump();
-						
+						newFile << postBody;
+
+						bugNumber = replyJson["number"].int_value();
+						postHashStr = hash_string(postBody);
+						hashesFile.set_value_for_key(to_string(bugNumber), postHashStr);
+						hashesFile.save();
+
 						unlink( currIssue.filepath().c_str() );
 					}
 
@@ -820,7 +829,6 @@ void	working_copy::filter_issue_body_from_github( Json &replyJson )
 
 void	working_copy::pull( const remote& inRemote )
 {
-	// TODO: Ensure we do not overwrite modified issues that haven't been pushed yet!
 	{
 		
 		filesystem::path	wcPath(mWorkingCopyPath);
@@ -898,6 +906,8 @@ void	working_copy::pull( const remote& inRemote )
 					throw runtime_error(ss.str());
 				}
 			} );
+		
+		hashesFile.save();
 		
 		// Write out highest bug number so we don't need to search the database to add a bug:
 		ifstream		settingsfile("cache/bugmatic_state");
