@@ -744,7 +744,7 @@ void	working_copy::push( const remote& inRemote )
 		else if( hash_string(postBody) != hash_string(hashesFile.value_for_key(to_string(currIssue.issue_number()))) )	// Changed locally.
 		{
 			stringstream ss;
-			ss << "Issue #" << currIssue.issue_number() << "has been changed locally. Can't yet push changes or merge issues.";
+			ss << "Issue #" << currIssue.issue_number() << " has been changed locally. Can't yet push changes or merge issues.";
 			throw runtime_error( ss.str() );
 		}
 	} );
