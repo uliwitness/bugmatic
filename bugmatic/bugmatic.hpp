@@ -85,16 +85,16 @@ public:
 	
 	int			issue_number() const		{ return mIssueMetadata["number"].int_value(); }
 	std::string	title() const				{ return mIssueMetadata["title"].string_value(); }
-	void		set_title( std::string inTitle )	{ replace_json_field( "title", json11::Json(inTitle), mIssueMetadata ); }
+	void		set_title( std::string inTitle )	{ replace_json_field( "title", json11::Json(inTitle), mIssueMetadata ); save(); }
 	std::string	body() const				{ return mIssueMetadata["body"].string_value(); }
-	void		set_body( std::string inBody )		{ replace_json_field( "body", json11::Json(inBody), mIssueMetadata ); }
+	void		set_body( std::string inBody )		{ replace_json_field( "body", json11::Json(inBody), mIssueMetadata ); save(); }
 	std::string	created_at() const			{ return mIssueMetadata["created_at"].string_value(); }
 	std::string	closed_at() const			{ return mIssueMetadata["closed_at"].string_value(); }
 	std::string	updated_at() const			{ return mIssueMetadata["updated_at"].string_value(); }
 	std::string	html_url() const			{ return mIssueMetadata["html_url"].string_value(); }
 	std::string	url() const					{ return mIssueMetadata["url"].string_value(); }
 	std::string	uuid() const				{ return mIssueMetadata["uuid"].string_value(); }
-	void		set_uuid( std::string inUUID )	{ replace_json_field( "uuid", json11::Json(inUUID), mIssueMetadata ); }
+	void		set_uuid( std::string inUUID )	{ replace_json_field( "uuid", json11::Json(inUUID), mIssueMetadata ); save(); }
 	std::string	repository_url() const		{ return mIssueMetadata["repository_url"].string_value(); }
 	std::string	comments_url() const		{ return mIssueMetadata["comments_url"].string_value(); }
 	std::string	state() const				{ return mIssueMetadata["state"].string_value(); }
@@ -113,8 +113,9 @@ public:
 	std::string	filepath() const			{ return mFilePath; }
 	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" );return pos == mFilePath.length(); }
 	
+	void		save();
+	
 	issue_info & operator =( const issue_info& inOriginal ) { mIssueMetadata = inOriginal.mIssueMetadata; mFilePath= inOriginal.mFilePath; return *this; }
-
 	
 protected:
 	json11::Json	issue_json()	{ return mIssueMetadata; }

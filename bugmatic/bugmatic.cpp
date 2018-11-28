@@ -332,6 +332,13 @@ std::vector<user_info>	issue_info::assignees() const
 }
 
 
+void	issue_info::save()
+{
+	ofstream	outFile(mFilePath);
+	outFile << mIssueMetadata.dump();
+}
+
+
 std::string remote::url() const
 {
 	string url( "https://api.github.com/repos/" );
