@@ -169,9 +169,36 @@ string	cached_download( string url, string fname, string userName, string passwo
 }
 
 
+string	raw_download( string url, string userName, string password )
+{
+	string		replyData;
+	url_request	request;
+	url_reply	reply;
+	
+	request.add_header( "User-Agent: " USER_AGENT );
+	request.set_user_name( userName );
+	request.set_password( password );
+	
+	cout << "\tFetching URL: " << url << endl;
+	CURLcode	errcode = request.load( url, reply );
+	if( errcode == CURLE_OK )
+	{
+		replyData = reply.data();
+	}
+	else
+	{
+		cerr << "Curl Error " << errcode << " downloading from '" << url << "'" << endl;
+		return std::string();
+	}
+	
+	return replyData;
+}
+
+
+
 void	download_comments( int bugNumber, string commentsURL, string userName, string password, bool ignoreCache, int *outNextCommentNumber )
 {
-	ifstream		downloadedcommentsjson;
+	string			errStr;
 	stringstream	downloadedcommentsfilename;
 	downloadedcommentsfilename << "cache/" << bugNumber << "_comments_downloaded.json";
 	string			commentsdata = cached_download( commentsURL, downloadedcommentsfilename.str(), userName, password, ignoreCache );
@@ -784,6 +811,11 @@ void	working_copy::push_comment( const remote& inRemote, issue_info& currIssue, 
 	url_request	request;
 	url_reply	reply;
 	
+	stringstream	issuehashesfilename;
+	issuehashesfilename << "cache/" << currIssue.issue_number() << "_comments_hashes";
+	
+	configfile	commentHashes( filesystem::path(mWorkingCopyPath) / filesystem::path(issuehashesfilename.str()) );
+	
 	Json	postBodyJson = currComment.comment_json();
 	string	postBody = postBodyJson.dump();
 	
@@ -791,6 +823,46 @@ void	working_copy::push_comment( const remote& inRemote, issue_info& currIssue, 
 	if( url.length() == 0 )
 	{
 		url = currIssue.comments_url();
+	}
+	else
+	{
+		string pristineHash = commentHashes.value_for_key( to_string(currComment.comment_id()) );
+		string onDiskHash = hash_string(postBody);
+		
+		if( pristineHash == onDiskHash ) // Unchanged? Nothing to do.
+		{
+			return;
+		}
+		
+		string errMsg;
+		string remoteJsonData = raw_download( url, inRemote.user_name(), inRemote.password() );
+		Json remoteJson = Json::parse( remoteJsonData, errMsg );
+		if( errMsg.length() == 0 )
+		{
+			if( remoteJson["message"].is_string() )
+			{
+				stringstream ss;
+				ss << "GET request to " << url << " failed with Github error: " << remoteJson["message"].string_value();
+				throw runtime_error( ss.str() );
+			}
+		}
+		else
+		{
+			stringstream ss;
+			ss << "GET request to " << url << " failed with Json parsing error: " << errMsg;
+			throw runtime_error( ss.str() );
+		}
+		
+		string remoteJsonDataUnpacked = remoteJson.dump();
+		string remoteHash = hash_string(remoteJsonDataUnpacked);
+		
+		if( remoteHash != pristineHash )
+		{
+			stringstream ss;
+			ss << "Comment #" << currComment.comment_id() << " of Issue #" << currIssue.issue_number() << " has been changed locally and remotely. Can't yet merge comments.";
+			cout << "===== local: =====" << endl << postBody << endl << "===== remote: =====" << endl << remoteJsonData << endl << "===== remote reformatted: =====" << endl << remoteJsonDataUnpacked;
+			throw runtime_error( ss.str() );
+		}
 	}
 
 	request.add_header( "User-Agent: " USER_AGENT );
@@ -819,6 +891,12 @@ void	working_copy::push_comment( const remote& inRemote, issue_info& currIssue, 
 				ss << "POST request to " << url << " failed with Github error: " << replyJson["message"].string_value();
 				throw runtime_error( ss.str() );
 			}
+		}
+		else
+		{
+			stringstream ss;
+			ss << "POST request to " << url << " failed with Json parsing error: " << errMsg;
+			throw runtime_error( ss.str() );
 		}
 	}
 	else

@@ -111,7 +111,7 @@ public:
 	int			issue_id() const			{ return mIssueMetadata["id"].int_value(); }
 	
 	std::string	filepath() const			{ return mFilePath; }
-	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" );return pos == mFilePath.length(); }
+	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" ); return pos == mFilePath.length(); }
 	
 	void		save();
 	
