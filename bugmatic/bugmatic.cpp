@@ -319,7 +319,7 @@ std::vector<comment_info>	issue_info::comments() const
 			errStr << "Can't parse comment for #" << issue_number() << ": " << errMsg;
 			throw runtime_error(errStr.str());
 		}
-		commentInfos.push_back( comment_info( currItem ) );
+		commentInfos.push_back( comment_info( currItem, fpath.string() ) );
 	}
 	
 	return commentInfos;
@@ -897,6 +897,29 @@ void	working_copy::push_comment( const remote& inRemote, issue_info& currIssue, 
 			stringstream ss;
 			ss << "POST request to " << url << " failed with Json parsing error: " << errMsg;
 			throw runtime_error( ss.str() );
+		}
+		
+		stringstream	issuecommentfoldername;
+		issuecommentfoldername << "issues/" << currIssue.issue_number() << "_comments";
+		mkdir( issuecommentfoldername.str().c_str(), 0777 );
+		stringstream	issuecommentfilename;
+		issuecommentfilename << issuecommentfoldername.str() << "/" << replyJson["id"].int_value() << ".json";
+
+		if( currComment.is_pending() )
+		{
+			unlink( currComment.filepath().c_str() );
+		}
+
+		string 		replyData = replyJson.dump();
+		ofstream	commentfile(filesystem::path(mWorkingCopyPath) / filesystem::path(issuecommentfilename.str()));
+		commentfile << replyData;
+		
+		commentHashes.set_value_for_key(to_string(replyJson["id"].int_value()), hash_string(replyData));
+		commentHashes.save();
+
+		if( mChangeHandler )
+		{
+			mChangeHandler( *this );
 		}
 	}
 	else

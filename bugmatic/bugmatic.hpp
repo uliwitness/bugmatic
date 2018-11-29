@@ -58,8 +58,9 @@ protected:
 class comment_info
 {
 public:
-	comment_info( json11::Json inJson ) : mCommentMetadata(inJson) {}
-	
+	comment_info( json11::Json inJson, std::string inPath ) : mCommentMetadata(inJson), mFilePath(inPath) {}
+	comment_info( const comment_info& inOriginal ) : mCommentMetadata(inOriginal.mCommentMetadata), mFilePath(inOriginal.mFilePath) {}
+
 	std::string	body() const				{ return mCommentMetadata["body"].string_value(); }
 	std::string	created_at() const			{ return mCommentMetadata["created_at"].string_value(); }
 	std::string	updated_at() const			{ return mCommentMetadata["updated_at"].string_value(); }
@@ -71,9 +72,15 @@ public:
 	int			comment_id() const			{ return mCommentMetadata["id"].int_value(); }
 	
 	json11::Json	comment_json()			{ return mCommentMetadata; }
+
+	std::string	filepath() const			{ return mFilePath; }
+	bool		is_pending() const			{ off_t pos = mFilePath.rfind( ".pending.json" ); return pos == mFilePath.length(); }
 	
+	comment_info & operator =( const comment_info& inOriginal ) { mCommentMetadata = inOriginal.mCommentMetadata; mFilePath = inOriginal.mFilePath; return *this; }
+
 protected:
 	json11::Json	mCommentMetadata;
+	std::string		mFilePath;
 };
 
 
@@ -115,7 +122,7 @@ public:
 	
 	void		save();
 	
-	issue_info & operator =( const issue_info& inOriginal ) { mIssueMetadata = inOriginal.mIssueMetadata; mFilePath= inOriginal.mFilePath; return *this; }
+	issue_info & operator =( const issue_info& inOriginal ) { mIssueMetadata = inOriginal.mIssueMetadata; mFilePath = inOriginal.mFilePath; return *this; }
 	
 protected:
 	json11::Json	issue_json()	{ return mIssueMetadata; }
