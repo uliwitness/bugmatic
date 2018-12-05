@@ -19,19 +19,22 @@ namespace bugmatic
 class configfile
 {
 public:
-	configfile( const std::string& inPath ) : mPath(inPath) { load(); }
+	configfile( const std::string& inPath, char separator = ':' ) : mPath(inPath), mSeparator(separator) { load(); }
 	~configfile() { save(); }
 	
-	std::string		value_for_key( const std::string& inKey );
-	void			set_value_for_key( const std::string& inKey, const std::string& inValue );
+	const std::string	value_for_key( const std::string& inKey ) const;
+	void				set_value_for_key( const std::string& inKey, const std::string& inValue );
 	
 	bool			save();
 	bool			load();
-	
+
+	const std::string	operator []( const std::string& inKey ) const;
+
 protected:
 	std::string							mPath;
 	std::map<std::string,std::string>	mKeys;
 	bool								mDirty = false;
+	char								mSeparator;
 };
 
 }

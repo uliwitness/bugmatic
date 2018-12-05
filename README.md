@@ -7,6 +7,9 @@ The idea is that just as you can download your Git repository from Github
 and fully use it while you are on a plane, you should be able to manage your
 Github Issues.
 
+Another goal of Bugmatic is to provide a way to back up Github issues
+in an open file format.
+
 ## Usage example:
 
 	mac:~ user$ mkdir mybugs

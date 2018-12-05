@@ -377,6 +377,21 @@ std::string remote::url() const
 }
 
 
+void	working_copy::load_user_info()
+{
+	if( mWorkingCopyPath.length() > 0 )
+	{
+		const char *homeDir = getenv("HOME");
+		if( homeDir )
+		{
+			configfile	gitSettings( filesystem::path(homeDir) / filesystem::path(".gitconfig"), '=' );
+			mUserName = gitSettings["name"];
+			mUserEmail = gitSettings["email"];
+		}
+	}
+}
+
+
 void	working_copy::init()
 {
 	chdir( mWorkingCopyPath.c_str() );
@@ -707,16 +722,56 @@ void	working_copy::push( const remote& inRemote )
 
 	list( std::vector<std::string>(), [inRemote,&hashesFile,this]( issue_info currIssue )
 	{
-		string url( inRemote.url() );
-		url.append("/issues");
-
 		Json	postBodyJson = currIssue.issue_json();
 		string	postBody = postBodyJson.dump();
 		string	postHashStr = hash_string(postBody);
 		string	hashesFileEntry = hashesFile.value_for_key(to_string(currIssue.issue_number()));
 		int		bugNumber = currIssue.issue_number();
+		string	url = currIssue.url();
 		
-		if( currIssue.url() == "" )	// New, not yet on Github.
+		if( url == "" ) // New, not yet on server?
+		{
+			url = inRemote.url();
+			url.append("/issues");
+		}
+		else if( postHashStr != hashesFileEntry )	// Already on server, but changed locally.
+		{
+			string errMsg;
+			string remoteJsonData = raw_download( url, inRemote.user_name(), inRemote.password() );
+			Json remoteJson = Json::parse( remoteJsonData, errMsg );
+			if( errMsg.length() == 0 )
+			{
+				if( remoteJson["message"].is_string() )
+				{
+					stringstream ss;
+					ss << "GET request to " << url << " failed with Github error: " << remoteJson["message"].string_value();
+					throw runtime_error( ss.str() );
+				}
+			}
+			else
+			{
+				stringstream ss;
+				ss << "GET request to " << url << " failed with Json parsing error: " << errMsg;
+				throw runtime_error( ss.str() );
+			}
+			
+			filter_issue_body_from_github(remoteJson);
+			
+			string remoteJsonDataUnpacked = remoteJson.dump();
+			string remoteHash = hash_string(remoteJsonDataUnpacked);
+			
+			if( remoteHash != hashesFileEntry )
+			{
+				stringstream ss;
+				ss << "Issue #" << currIssue.issue_number() << " has been changed locally and remotely. Can't yet merge issues.";
+				cout << "===== local: =====" << endl << postBody << endl << "===== remote: =====" << endl << remoteJsonData << endl << "===== remote reformatted: =====" << endl << remoteJsonDataUnpacked;
+				throw runtime_error( ss.str() );
+			}
+			
+			// Only locally changed? We can push our changes upstream!
+		}
+		
+		if( url != "" ) // Either creation or editing URL was set? Post new data!
 		{
 			url_request	request;
 			url_reply	reply;
@@ -790,12 +845,6 @@ void	working_copy::push( const remote& inRemote )
 				ss << "POST request to " << url << " failed with curl error: " << errcode;
 				throw runtime_error( ss.str() );
 			}
-		}
-		else if( postHashStr != hashesFileEntry )	// Changed locally.
-		{
-			stringstream ss;
-			ss << "Issue #" << currIssue.issue_number() << " has been changed locally. Can't yet push changes or merge issues.";
-			throw runtime_error( ss.str() );
 		}
 		
 		for( comment_info& currComment : currIssue.comments() )
@@ -988,6 +1037,18 @@ void	working_copy::filter_issue_body_from_github( Json &replyJson )
 		}
 		string uuid = issueBody.substr( uuidLabelEnd, uuidEnd - uuidLabelEnd );
 		replace_json_field("uuid", uuid, replyJson);
+	}
+	
+	delete_json_field("comments", replyJson); // Don't consider number of attached comments changing a change on the issue itself.
+	
+	// Now delete any fields that are `null`. Missing or `null` shouldn't make a difference to our hash.
+	map<string, Json> topLevelItems = replyJson.object_items();
+	for( auto keyValuePair : topLevelItems )
+	{
+		if( keyValuePair.second.is_null() )
+		{
+			delete_json_field(keyValuePair.first, replyJson);
+		}
 	}
 }
 

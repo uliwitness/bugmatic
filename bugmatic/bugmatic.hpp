@@ -158,9 +158,9 @@ protected:
 class working_copy
 {
 public:
-	explicit working_copy( std::string inWorkingCopyPath = "" ) : mWorkingCopyPath(inWorkingCopyPath) {}
+	explicit working_copy( std::string inWorkingCopyPath = "" ) : mWorkingCopyPath(inWorkingCopyPath) { load_user_info(); }
 	
-	void		set_path( std::string inWorkingCopyPath )	{ mWorkingCopyPath = inWorkingCopyPath; }
+	void		set_path( std::string inWorkingCopyPath )	{ mWorkingCopyPath = inWorkingCopyPath; load_user_info(); }
 	std::string	path()										{ return mWorkingCopyPath; }
 	
 	void		init();
@@ -180,10 +180,13 @@ protected:
 	void		filter_issue_body_from_github( json11::Json &replyJson );
 	void		filter_issue_body_for_github( json11::Json &replyJson );
 
+	void		load_user_info();
 	void		push_comment( const remote& inRemote, issue_info& currIssue, comment_info& currComment );
 	
 	std::string		mWorkingCopyPath;
 	std::function<void(working_copy&)> mChangeHandler;
+	std::string		mUserName;
+	std::string		mUserEmail;
 };
 
 }
