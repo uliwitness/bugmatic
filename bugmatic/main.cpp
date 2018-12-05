@@ -18,9 +18,9 @@ using namespace std;
 using namespace bugmatic;
 
 
-void	print_syntax()
+void	print_syntax(ostream& destination)
 {
-	cerr << "Syntax: bugmatic <operation> ..." << endl
+	destination << "Syntax: bugmatic <operation> ..." << endl
 			<< "\tbugmatic init # set up a new, empty issue database." << endl
 			<< "\tbugmatic clone <myUsername> <project> [<projectUsername>] # set up a new issue database by downloading from the given Github project." << endl
 			<< "\tbugmatic new [<title> [<body>]] # Create a new, local issue in the current directory's bug database." << endl
@@ -29,7 +29,8 @@ void	print_syntax()
 			<< "\tbugmatic pull <myUsername> <project> [<projectUsername>] # Download issues added on Github since we last cloned or pulled into the current directory's database." << endl
 			<< "\tbugmatic label <labelName> [<issueNumber>] # add a label to a given issue (defaults to the last created issue)." << endl
 			<< "\tbugmatic comment <commentBody> [<issueNumber>] # add a comment to a given issue (defaults to the last created issue)." << endl
-			<< "\tbugmatic show [<issueNumber>] # Display a given issue (defaults to the last created issue)." << endl;
+			<< "\tbugmatic show [<issueNumber>] # Display a given issue (defaults to the last created issue)." << endl
+			<< "\tbugmatic help # Display this syntax summary." << endl;
 }
 
 
@@ -42,8 +43,9 @@ int main( int argc, const char * argv[] )
 	{
 		if( argc < 2 )
 		{
-			print_syntax();
-			return 1;
+			cerr << "Error: Expected at least one operation argument." << endl;
+			print_syntax(cerr);
+			return EXIT_FAILURE;
 		}
 		string	operation = argv[1];
 		char* currDirBuf = getcwd( nullptr, 0 );
@@ -100,8 +102,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 4 || argc > 5 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 			string	userName = argv[2];
 			string	project = argv[3];
@@ -129,8 +132,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 4 || argc > 5 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 			string	userName = argv[2];
 			string	project = argv[3];
@@ -158,8 +162,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 4 || argc > 5 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 			string	userName = argv[2];
 			string	project = argv[3];
@@ -187,8 +192,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 3 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 
 			string labelName = argv[2];
@@ -210,8 +216,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 3 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 
 			string commentBody = argv[2];
@@ -233,8 +240,9 @@ int main( int argc, const char * argv[] )
 		{
 			if( argc < 2 )
 			{
-				print_syntax();
-				return 1;
+				cerr << "Error: Too few/many arguments to for opertaion \"" << operation << "\"" << endl;
+				print_syntax(cerr);
+				return EXIT_FAILURE;
 			}
 
 			working_copy	wc( currDir );
@@ -262,17 +270,25 @@ int main( int argc, const char * argv[] )
 			
 			cout << "Done." << endl;
 		}
+		else if( operation == "help" )
+			print_syntax(cout);
 		else
-			print_syntax();
+		{
+			cerr << "Error: Unknown operation \"" << operation << "\"." << endl;
+			print_syntax(cerr);
+			return EXIT_FAILURE;
+		}
 	}
 	catch( const std::exception& err )
 	{
 		cerr << "Error: " << err.what() << endl;
+		return EXIT_FAILURE;
 	}
 	catch( ... )
 	{
 		cerr << "Unknown exception" << endl;
+		return EXIT_FAILURE;
 	}
 	
-	return 0;
+	return EXIT_SUCCESS;
 }
