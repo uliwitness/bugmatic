@@ -45,10 +45,27 @@ bool	bugmatic::configfile::save()
 	if( mDirty )
 	{
 		ofstream		settingsfile(mPath);
+		string			currSection;
 
 		for( auto currPair : mKeys )
 		{
-			settingsfile << currPair.first << string(1, mSeparator) << currPair.second << "\n";
+			string key = currPair.first;
+			size_t dotPos = key.find('.');
+			if( dotPos != string::npos && dotPos +1 <= key.length() )
+			{
+				string section = key.substr(0, dotPos);
+				key = key.substr(dotPos + 1);
+				if( section.compare(currSection) != 0 )
+				{
+					currSection = section;
+					settingsfile << "[" << currSection << "]\n";
+				}
+			}
+			else if( currSection != "" )
+			{
+				settingsfile << "[]\n";
+			}
+			settingsfile << key << string(1, mSeparator) << currPair.second << "\n";
 		}
 	}
 	
@@ -60,7 +77,7 @@ bool	bugmatic::configfile::load()
 {
 	ifstream		settingsfile(mPath);
 	bool			inKey = true;
-	string			key, value;
+	string			key, value, section;
 	
 	while( true )
 	{
@@ -73,12 +90,9 @@ bool	bugmatic::configfile::load()
 		{
 			if( key.find("[") == 0 && key.rfind("]") == key.length() -1 )
 			{
-				key = key.substr(1, key.length() -2) + ".";
+				section = key.substr(1, key.length() - 2);
 			}
-			else
-			{
-				key = "";
-			}
+			key = "";
 			continue;
 		}
 		else if( !inKey && currCh == '\n' )
@@ -90,7 +104,7 @@ bool	bugmatic::configfile::load()
 			if( actualEnd == string::npos ) actualEnd = key.length(); else ++actualEnd;
 			
 			key = key.substr( actualStart, actualEnd - actualStart );
-
+			
 			actualStart = value.find_first_not_of("\t\r\n ");
 			if( actualStart == string::npos ) actualStart = 0;
 			
@@ -99,6 +113,10 @@ bool	bugmatic::configfile::load()
 			
 			value = value.substr( actualStart, actualEnd - actualStart );
 
+			if( section.length() > 0 ) {
+				key = section + "." + key;
+			}
+			
 			mKeys[key] = value;
 			key.erase();
 			value.erase();

@@ -9,7 +9,9 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <fstream>
 #include "bugmatic.hpp"
+#include "configfile.hpp"
 #include "fake_filesystem.hpp"
 #include "md5hash.hpp"
 
@@ -88,10 +90,96 @@ void	test_true( bool inSuccess, const char* exprStr, size_t& numTests, size_t &n
 int main(int argc, const char * argv[])
 {
 	size_t				numTests = 0, numFailures = 0;
+	
+	cout << "note: ===== Test hash function =====" << endl;
+	TEST_STR_EQUAL( hash_string("Same"), hash_string("Same") );
+	TEST_STR_EQUAL( hash_string("Same"), "c9c90a13d8ec8fe53c6bb33fe10af6f2fe" );
+	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("Different") );
+	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("same") );
+	TEST_STR_NOT_EQUAL( hash_string("long"), hash_string("Same") );
+	TEST_STR_NOT_EQUAL( hash_string("same"), hash_string("Same") );
+	TEST_STR_NOT_EQUAL( hash_string("Different"), hash_string("Same") );
+	TEST_STR_EQUAL( hash_string(""), "d4d41d8cd98f00b204e9800998ecf8427e" );
+	
+	cout << endl << "note: ===== Test config files =====" << endl;
+	{ ofstream deletefile("testfile.ini", ofstream::trunc); }
+	{
+		cout << "note: ----- setting namespaced -----" << endl;
+		configfile	cf("testfile.ini");
+		cf.set_value_for_key("writer.name", "Jane Eyre");
+		cf.set_value_for_key("writer.email", "je@example.com");
+		cf.set_value_for_key("reader.name", "Terry Pratchett");
+		cf.set_value_for_key("reader.email", "gnu@example.com");
+		
+		cout << "note: ----- retrieving namespaced -----" << endl;
+		TEST_STR_EQUAL( cf["writer.name"].c_str(), "Jane Eyre" );
+		TEST_STR_EQUAL( cf["writer.email"].c_str(), "je@example.com" );
+		TEST_STR_EQUAL( cf["reader.name"].c_str(), "Terry Pratchett" );
+		TEST_STR_EQUAL( cf["reader.email"].c_str(), "gnu@example.com" );
+	}
+	{
+		cout << "note: ----- reading namespaced -----" << endl;
+		configfile	cf("testfile.ini");
+		TEST_STR_EQUAL( cf["writer.name"].c_str(), "Jane Eyre" );
+		TEST_STR_EQUAL( cf["writer.email"].c_str(), "je@example.com" );
+		TEST_STR_EQUAL( cf["reader.name"].c_str(), "Terry Pratchett" );
+		TEST_STR_EQUAL( cf["reader.email"].c_str(), "gnu@example.com" );
+	}
+	{
+		cout << "note: ----- reading raw namespaced data -----" << endl;
+		ifstream cis("testfile.ini");
+		std::string str((std::istreambuf_iterator<char>(cis)), std::istreambuf_iterator<char>());
+		TEST_STR_EQUAL(str.c_str(), "[reader]\nemail=gnu@example.com\nname=Terry Pratchett\n[writer]\nemail=je@example.com\nname=Jane Eyre\n");
+	}
+
+	cout << "note: ----- setting & retrieving plain -----" << endl;
+	{ ofstream deletefile("testfile.ini", ofstream::trunc); }
+	{
+		configfile	cf("testfile.ini");
+		cf.set_value_for_key("first", "Shonda");
+		cf.set_value_for_key("second", "Rhimes");
+		
+		TEST_STR_EQUAL( cf["first"].c_str(), "Shonda" );
+		TEST_STR_EQUAL( cf["second"].c_str(), "Rhimes" );
+	}
+	cout << "note: ----- reading plain -----" << endl;
+	{
+		configfile	cf("testfile.ini");
+		TEST_STR_EQUAL( cf["first"].c_str(), "Shonda" );
+		TEST_STR_EQUAL( cf["second"].c_str(), "Rhimes" );
+	}
+	
+	cout << "note: ----- reading raw plain data -----" << endl;
+	{
+		ifstream cis("testfile.ini");
+		std::string str((std::istreambuf_iterator<char>(cis)), std::istreambuf_iterator<char>());
+		TEST_STR_EQUAL(str.c_str(), "first=Shonda\nsecond=Rhimes\n");
+	}
+	
+	cout << "note: ----- writing raw data & reading back -----" << endl;
+	{
+		ofstream nufile("testfile.ini", ofstream::trunc);
+		nufile << "plain=bagel\n[iconographer]\nname=Susan\nlast=Kare\n[regions]\nname=Bill\nlast=Atkinson\n";
+	}
+	{
+		configfile	cf("testfile.ini");
+		TEST_STR_EQUAL( cf["plain"].c_str(), "bagel" );
+		TEST_STR_EQUAL( cf["iconographer.name"].c_str(), "Susan" );
+		TEST_STR_EQUAL( cf["iconographer.last"].c_str(), "Kare" );
+		TEST_STR_EQUAL( cf["regions.name"].c_str(), "Bill" );
+		TEST_STR_EQUAL( cf["regions.last"].c_str(), "Atkinson" );
+		cf.set_dirty(true);
+	}
+	{
+		ifstream cis("testfile.ini");
+		std::string str((std::istreambuf_iterator<char>(cis)), std::istreambuf_iterator<char>());
+		TEST_STR_EQUAL(str.c_str(), "[iconographer]\nlast=Kare\nname=Susan\n[]\nplain=bagel\n[regions]\nlast=Atkinson\nname=Bill\n"); // I don't think there's an order guarantee on std::map, this test might fail on other compilers.
+	}
+
+	cout << endl << "note: ===== Find all uliwitness' bugs =====" << endl;
 	filesystem::path	test1path( filesystem::path(argv[0]).parent_path() / "testdata" / "testdata1" );
 	working_copy		wc( test1path.string() );
-	
-	cout << "note: ===== Find all uliwitness' bugs =====" << endl;
+
 	stringstream	output1;
 	wc.list( (std::vector<std::string>){ "assignee.login=uliwitness" }, [&output1]( issue_info currIssue )
 	{
@@ -103,7 +191,7 @@ int main(int argc, const char * argv[])
 	} );
 	TEST_STR_EQUAL( output1.str(), "4,Add support for OAuth,uliwitness\n5,Should report rate limit exceeded,uliwitness\n" );
 
-	cout << "note: ===== Find unclosed bugs in range 1...3 =====" << endl;
+	cout << endl << "note: ===== Find unclosed bugs in range 1...3 =====" << endl;
 	stringstream	output2;
 	wc.list( (std::vector<std::string>){ "closed_at=null", "number<4" }, [&output2]( issue_info currIssue )
 	{
@@ -111,7 +199,7 @@ int main(int argc, const char * argv[])
 	} );
 	TEST_STR_EQUAL( output2.str(), "1,test,\n2,Found a bug,\n3,Found a bug,\n" );
 	
-	cout << "note: ===== Create a new local bug =====" << endl;
+	cout << endl << "note: ===== Create a new local bug =====" << endl;
 	int	bugNumber = wc.new_issue( "This is local.", "It has issues." );
 	stringstream filter;
 	filter << "number=" << bugNumber;
@@ -123,20 +211,10 @@ int main(int argc, const char * argv[])
 	} );
 	TEST_TRUE( foundOne );
 
-	cout << "note: ===== Test hash function =====" << endl;
-	TEST_STR_EQUAL( hash_string("Same"), hash_string("Same") );
-	TEST_STR_EQUAL( hash_string("Same"), "c9c90a13d8ec8fe53c6bb33fe10af6f2fe" );
-	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("Different") );
-	TEST_STR_NOT_EQUAL( hash_string("Same"), hash_string("same") );
-	TEST_STR_NOT_EQUAL( hash_string("long"), hash_string("Same") );
-	TEST_STR_NOT_EQUAL( hash_string("same"), hash_string("Same") );
-	TEST_STR_NOT_EQUAL( hash_string("Different"), hash_string("Same") );
-	TEST_STR_EQUAL( hash_string(""), "d4d41d8cd98f00b204e9800998ecf8427e" );
-	
 	if( numFailures > 0 )
-		cout << "error: "<< numFailures << " tests of " << numTests << " failed." << endl;
+		cout << endl << "error: "<< numFailures << " tests of " << numTests << " failed." << endl;
 	else
-		cout << "note: ===== All tests passed. =====" << endl;
+		cout << endl << "note: ===== All tests passed. =====" << endl;
 	
     return (int)numFailures;
 }
